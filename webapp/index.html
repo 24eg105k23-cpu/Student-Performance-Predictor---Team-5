@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+
+<html lang="en" data-bs-theme="dark">
+
+
+
+<head>
+
+  <meta charset="UTF-8" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Student Performance Predictor</title>
+
+  <meta name="description" content="AI-Based Student Performance Predictor for Early Intervention" />
+
+  <!-- Favicons -->
+
+  <link rel="icon" href="public/icon.svg" type="image/svg+xml" />
+
+  <link rel="icon" href="public/icon-light-32x32.png" media="(prefers-color-scheme: light)" sizes="32x32" />
+
+  <link rel="icon" href="public/icon-dark-32x32.png" media="(prefers-color-scheme: dark)" sizes="32x32" />
+
+  <link rel="apple-touch-icon" href="public/apple-icon.png" />
+
+  <!-- Bootstrap CSS -->
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+
+  <!-- Bootstrap Icons -->
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+
+  <!-- Google Fonts -->
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+    rel="stylesheet" />
+
+  <!-- Custom CSS -->
+
+  <link rel="stylesheet" href="styles.css" />
+
+</head>
+
+
+
+<body>
+
+
+
+  <!-- Theme Toggle -->
+
+  <div class="position-absolute top-0 start-0 p-3 p-md-4 mt-1 z-3">
+
+    <button id="theme-toggle" class="d-flex align-items-center justify-content-center theme-toggle-btn"
+      aria-label="Toggle theme">
+
+      <i class="bi bi-sun-fill text-warning" id="theme-icon"></i>
+
+    </button>
+
+  </div>
+
+
+
+  <main class="min-vh-100 bg-app">
+
+    <div class="container py-4 py-md-5">
+
+
+
+      <!-- Header -->
+
+      <div class="mb-4">
+
+        <h1 class="app-title">Student Performance Predictor</h1>
+
+        <p class="app-subtitle">AI-Based Early Intervention System for Academic Excellence</p>
+
+      </div>
+
+
+
+      <!-- Navigation Tabs -->
+
+      <div class="d-flex justify-content-center mb-4">
+
+        <ul class="nav nav-tabs app-tabs" id="mainTabs" role="tablist">
+
+          <li class="nav-item" role="presentation">
+
+            <button class="nav-link active" id="tab-dashboard" data-bs-toggle="tab" data-bs-target="#pane-dashboard"
+              type="button" role="tab">
+
+              <i class="bi bi-grid-1x2 me-1"></i>Dashboard
+
+            </button>
+
+          </li>
+
+          <li class="nav-item" role="presentation">
+
+            <button class="nav-link" id="tab-marks" data-bs-toggle="tab" data-bs-target="#pane-marks" type="button"
+              role="tab">
+
+              <i class="bi bi-pencil-square me-1"></i>Marks &amp; Assessments
+
+            </button>
+
+          </li>
+
+          <li class="nav-item" role="presentation">
+
+            <button class="nav-link" id="tab-attendance" data-bs-toggle="tab" data-bs-target="#pane-attendance"
+              type="button" role="tab">
+
+              <i class="bi bi-calendar-check me-1"></i>Attendance
+
+            </button>
+
+          </li>
+
+          <li class="nav-item" role="presentation">
+
+            <button class="nav-link" id="tab-monitor" data-bs-toggle="tab" data-bs-target="#pane-monitor" type="button"
+              role="tab">
+
+              <i class="bi bi-activity me-1"></i>Monitor
+
+            </button>
+
+          </li>
+
+          <li class="nav-item" role="presentation">
+
+            <button class="nav-link" id="tab-message" data-bs-toggle="tab" data-bs-target="#pane-message" type="button"
+              role="tab">
+
+              <i class="bi bi-chat-dots me-1"></i>Messages
+
+            </button>
+
+          </li>
+
+        </ul>
+
+      </div>
+
+
+
+      <div class="tab-content" id="mainTabsContent">
+
+
+
+        <!-- ===================== DASHBOARD TAB ===================== -->
+
+        <div class="tab-pane fade show active" id="pane-dashboard" role="tabpanel">
+
+          <!-- Summary Cards -->
+
+          <div class="row g-3 mb-4">
+
+            <div class="col-6 col-md-3">
+
+              <div class="card app-card p-3">
+
+                <div class="card-label">Total Students</div>
+
+                <div class="card-value text-dark" id="dash-total">5</div>
+
+              </div>
+
+            </div>
+
+            <div class="col-6 col-md-3">
+
+              <div class="card app-card p-3">
+
+                <div class="card-label">At Risk</div>
+
+                <div class="card-value text-danger" id="dash-atrisk">2</div>
+
+              </div>
+
+            </div>
+
+            <div class="col-6 col-md-3">
+
+              <div class="card app-card p-3">
+
+                <div class="card-label">Excellent</div>
+
+                <div class="card-value text-success" id="dash-excellent">2</div>
+
+              </div>
+
+            </div>
+
+            <div class="col-6 col-md-3">
+
+              <div class="card app-card p-3">
+
+                <div class="card-label">Avg Performance</div>
+
+                <div class="card-value text-dark" id="dash-avg">65.0%</div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+
+
+
+
+
+
+          <!-- Selected Student Details -->
+
+          <div id="dashboard-student-details" class="card app-card p-3 p-md-4 bg-info-subtle d-none">
+
+            <h3 class="fs-5 fw-semibold mb-3" id="dash-selected-name">Selected Student</h3>
+
+            <div class="row g-3" id="dash-selected-body"></div>
+
+          </div>
+
+        </div>
+
+
+
+        <!-- ===================== MARKS & ASSESSMENTS TAB ===================== -->
+
+        <div class="tab-pane fade" id="pane-marks" role="tabpanel">
+
+          <div class="card app-card p-3 p-md-4">
+
+            <div class="mb-3">
+
+              <h2 class="section-title"><i class="bi bi-pencil-square text-primary me-2"></i>Enter Marks &amp;
+                Assessment</h2>
+
+              <p class="text-muted small">Record student marks and assessment details</p>
+
+            </div>
+
+
+
+            <div id="marks-success-alert" class="alert alert-success d-flex align-items-center d-none" role="alert">
+
+              <i class="bi bi-check-circle-fill me-2"></i>
+
+              Marks recorded successfully!
+
+            </div>
+
+
+
+            <form id="marks-form" novalidate>
+
+              <!-- Row 1: Student Info -->
+
+              <div class="row g-3 mb-3">
+
+
+
+                <div class="col-md-6">
+
+                  <label for="marks-rollNo" class="form-label fw-medium">Roll Number <span
+                      class="text-danger">*</span></label>
+
+                  <input type="text" class="form-control" id="marks-rollNo" name="rollNo"
+                    placeholder="Enter roll number" />
+
+                  <div class="invalid-feedback" id="marks-rollNo-error"></div>
+
+                </div>
+
+              </div>
+
+
+
+              <!-- Row 2: Assessment Type, Subject, Date -->
+
+              <div class="row g-3 mb-3">
+
+                <div class="col-md-4">
+
+                  <label for="marks-type" class="form-label fw-medium">Assessment Type <span
+                      class="text-danger">*</span></label>
+
+                  <select class="form-select" id="marks-type" name="assessmentType">
+
+                    <option value="mid1">mid1</option>
+
+                    <option value="mid2">mid2</option>
+
+                    <option value="unit 1 test">unit 1 test</option>
+
+                    <option value="unit3 test">unit3 test</option>
+
+                    <option value="assignment">assignment</option>
+
+                    <option value="final">final</option>
+
+                  </select>
+
+                </div>
+
+                <div class="col-md-4">
+
+                  <label for="marks-subject" class="form-label fw-medium">Subject <span
+                      class="text-danger">*</span></label>
+
+                  <select class="form-select" id="marks-subject" name="subject">
+
+                    <option value="Computer Oriented Statistical Methods">Computer Oriented Statistical Methods</option>
+
+                    <option value="Fundamentals of Computer Algorithms">Fundamentals of Computer Algorithms</option>
+
+                    <option value="Database Management Systems">Database Management Systems</option>
+
+                    <option value="Programming in Python">Programming in Python</option>
+
+                    <option value="Web Technologies">Web Technologies</option>
+
+                    <option value="Advanced Reading Comprehension Skills">Advanced Reading Comprehension Skills</option>
+
+                    <option value="Quantitative Aptitude and Logical Reasoning - II">Quantitative Aptitude and Logical
+                      Reasoning - II</option>
+
+                    <option value="Integrated Project - II">Integrated Project - II</option>
+
+                    <option value="Summer Internship-I">Summer Internship-I</option>
+
+                  </select>
+
+                </div>
+
+
+              </div>
+
+
+
+              <!-- Row 3: Scores -->
+
+              <div class="row g-3 mb-3">
+
+                <div class="col-md-4">
+
+                  <label for="marks-marksObtained" class="form-label fw-medium">Marks Obtained <span
+                      class="text-danger">*</span></label>
+
+                  <input type="number" step="0.5" class="form-control" id="marks-marksObtained" name="marksObtained"
+                    placeholder="0" />
+
+                  <div class="invalid-feedback" id="marks-marksObtained-error"></div>
+
+                </div>
+
+                <div class="col-md-4">
+
+                  <label for="marks-maxMarks" class="form-label fw-medium">Max Marks <span
+                      class="text-danger">*</span></label>
+
+                  <input type="number" class="form-control" id="marks-maxMarks" name="maxMarks" placeholder="20"
+                    value="20" />
+
+                  <div class="invalid-feedback" id="marks-maxMarks-error"></div>
+
+                </div>
+
+                <div class="col-md-4">
+
+                  <label class="form-label fw-medium">Percentage</label>
+
+                  <div class="form-control bg-light fw-semibold" id="marks-percentage">0%</div>
+
+                </div>
+
+              </div>
+              <button type="submit" class="btn btn-primary w-100" id="marks-submit-btn">
+
+                <i class="bi bi-check-circle me-1"></i> Record Marks
+
+              </button>
+
+            </form>
+
+          </div>
+
+        </div>
+
+
+
+        <!-- ===================== ATTENDANCE TAB ===================== -->
+
+        <div class="tab-pane fade" id="pane-attendance" role="tabpanel">
+
+          <div class="card app-card p-3 p-md-4">
+
+            <div class="mb-3">
+
+              <h2 class="section-title">Attendance Tracking</h2>
+
+              <p class="text-muted small">Click a box to mark absent (red). All students start as present (green).</p>
+
+            </div>
+
+
+
+            <div id="attendance-success-alert" class="alert alert-success d-flex align-items-center d-none"
+              role="alert">
+
+              <i class="bi bi-check-circle-fill me-2"></i>
+
+              <span id="attendance-success-msg">Attendance recorded successfully!</span>
+
+            </div>
+
+
+
+            <form id="attendance-form" novalidate>
+
+              <!-- Date -->
+
+              <div class="mb-3">
+
+                <label for="attendance-date" class="form-label fw-medium">
+
+                  Attendance Date <span class="text-danger">*</span>
+
+                </label>
+
+                <input type="date" class="form-control" id="attendance-date" name="date" style="max-width:220px" />
+
+                <div class="invalid-feedback" id="attendance-date-error"></div>
+
+              </div>
+
+
+
+              <!-- Summary Cards (Present / Absent only) -->
+
+              <div class="row g-3 mb-3">
+
+                <div class="col-6">
+
+                  <div class="card app-card p-3 bg-success-subtle">
+
+                    <div class="card-label">Present</div>
+
+                    <div class="card-value text-success" id="att-present">0</div>
+
+                  </div>
+
+                </div>
+
+                <div class="col-6">
+
+                  <div class="card app-card p-3 bg-danger-subtle">
+
+                    <div class="card-label">Absent</div>
+
+                    <div class="card-value text-danger" id="att-absent">0</div>
+
+                  </div>
+
+                </div>
+
+              </div>
+
+
+
+              <!-- Error Alert -->
+
+              <div id="attendance-records-error" class="alert alert-danger d-flex align-items-center d-none"
+                role="alert">
+
+                <i class="bi bi-exclamation-circle-fill me-2"></i>
+
+                All students attendance status must be recorded.
+
+              </div>
+
+
+
+              <!-- ===== COMPACT GRID OF TOGGLE BOXES ===== -->
+
+              <div id="attendance-grid" class="d-flex flex-wrap gap-2 mb-3"
+                style="max-height:420px; overflow-y:auto; padding:4px;">
+
+                <!-- Boxes rendered by JS -->
+
+              </div>
+
+
+
+              <button type="submit" class="btn btn-primary w-100" id="attendance-submit-btn">
+
+                Submit Attendance
+
+              </button>
+
+            </form>
+
+          </div>
+
+        </div>
+
+
+
+        <!-- ===================== MONITOR TAB ===================== -->
+
+        <div class="tab-pane fade" id="pane-monitor" role="tabpanel">
+
+          <!-- Summary Stats -->
+
+          <div class="row g-3 mb-4">
+
+            <div class="col-md-4">
+
+              <div class="card app-card p-3">
+
+                <div class="card-label">Total Students</div>
+
+                <div class="card-value text-dark" id="mon-total">5</div>
+
+              </div>
+
+            </div>
+
+            <div class="col-md-4">
+
+              <div class="card app-card p-3 bg-danger-subtle">
+
+                <div class="card-label text-danger fw-medium">Needs Intervention</div>
+
+                <div class="card-value text-danger" id="mon-atrisk">2</div>
+
+              </div>
+
+            </div>
+
+            <div class="col-md-4">
+
+              <div class="card app-card p-3 bg-success-subtle">
+
+                <div class="card-label text-success fw-medium">Excellent</div>
+
+                <div class="card-value text-success" id="mon-excellent">2</div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+
+
+          <!-- Search & Filter -->
+
+          <div class="card app-card p-3 p-md-4 mb-4">
+
+            <div class="row g-3 align-items-end">
+
+              <div class="col-md-6">
+
+                <label for="monitor-search" class="form-label fw-medium">Search Student</label>
+
+                <input type="text" class="form-control" id="monitor-search"
+                  placeholder="Search by name or roll number..." />
+
+              </div>
+
+              <div class="col-md-6">
+
+                <button class="btn btn-outline-secondary w-100" id="monitor-filter-btn" onclick="toggleRiskFilter()">
+
+                  Show At-Risk Students
+
+                </button>
+
+              </div>
+
+            </div>
+
+          </div>
+
+
+
+          <!-- At-Risk Alert -->
+
+          <div id="monitor-atrisk-alert" class="alert alert-danger d-flex align-items-center mb-4" role="alert">
+
+            <i class="bi bi-exclamation-circle-fill me-2"></i>
+
+            <span id="monitor-atrisk-msg"></span>
+
+          </div>
+
+
+
+          <!-- Students Table -->
+
+          <div class="card app-card p-3 p-md-4 mb-4">
+
+            <h3 class="fs-5 fw-semibold mb-3">Student List (<span id="mon-count">5</span>)</h3>
+
+            <div class="table-responsive">
+
+              <table class="table table-hover align-middle">
+
+                <thead>
+
+                  <tr>
+
+                    <th>Name</th>
+
+                    <th>Roll No</th>
+
+                    <th>Performance</th>
+
+                    <th>Attendance</th>
+
+                    <th>Status</th>
+
+                    <th>Trend</th>
+
+                    <th>Action</th>
+
+                  </tr>
+
+                </thead>
+
+                <tbody id="monitor-tbody"></tbody>
+
+              </table>
+
+            </div>
+
+          </div>
+
+
+
+          <!-- Student Details Panel -->
+
+          <div id="monitor-details-panel" class="card app-card p-3 p-md-4 border-primary d-none"
+            style="border-width:2px!important">
+
+            <h3 class="fs-5 fw-semibold mb-4" id="mon-details-name">Detailed Analysis</h3>
+
+            <!-- Info Row -->
+
+            <div class="row g-3 mb-4" id="mon-details-info"></div>
+
+            <!-- Metrics + Risk Factors -->
+
+            <div class="row g-4 mb-4">
+
+              <div class="col-md-6" id="mon-details-metrics"></div>
+
+              <div class="col-md-6" id="mon-details-risks"></div>
+
+            </div>
+
+            <!-- Recent Assessments -->
+
+            <div>
+
+              <p class="fw-medium mb-2">Recent Assessments:</p>
+
+              <div id="mon-details-assessments"></div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+
+
+        <!-- ===================== MESSAGE TAB ===================== -->
+
+        <div class="tab-pane fade" id="pane-message" role="tabpanel">
+
+          <div class="card app-card p-3 p-md-4">
+
+            <div class="mb-4">
+
+              <h2 class="section-title">Send SMS Notification</h2>
+
+              <p class="text-muted small">Send custom text messages to students or parents (Preconfigured for Twilio API
+
+                Integration)</p>
+
+            </div>
+
+
+
+            <form id="message-form" novalidate>
+
+              <div class="row g-3 mb-4">
+
+                <div class="col-md-6">
+
+                  <label for="message-recipient" class="form-label fw-medium">Recipient Group <span
+                      class="text-danger">*</span></label>
+
+                  <select class="form-select" id="message-recipient" name="recipient">
+
+                    <option value="all">All Students</option>
+
+                    <option value="at-risk">At-Risk Students (Intervention Needed)</option>
+
+                    <option value="low-attendance">Students with Low Attendance (< 75%)</option>
+
+                    <option value="excellent">Excellent Performers</option>
+
+                  </select>
+
+                </div>
+
+                <div class="col-md-6 d-flex flex-column justify-content-end">
+
+                  <div class="alert alert-info py-2 px-3 mb-0 d-flex align-items-center">
+
+                    <i class="bi bi-person-lines-fill me-2"></i>
+
+                    <span>Sending to <strong id="msg-student-count">5</strong> recipients</span>
+
+                  </div>
+
+                </div>
+
+              </div>
+
+
+
+              <div id="message-success-alert" class="alert alert-success d-flex align-items-center d-none mb-4"
+                role="alert">
+
+                <i class="bi bi-check-circle-fill me-2"></i>
+
+                Message queued for sending via Twilio!
+
+              </div>
+
+
+
+              <div class="mb-4">
+
+                <label for="message-content" class="form-label fw-medium">SMS Message Body <span
+                    class="text-danger">*</span></label>
+
+                <textarea class="form-control" id="message-content" rows="4"
+                  placeholder="Type your text message here..."></textarea>
+
+                <div class="invalid-feedback" id="message-content-error"></div>
+
+              </div>
+
+
+
+              <button type="submit" class="btn btn-primary" id="message-submit-btn">
+
+                <i class="bi bi-send me-1"></i> Send SMS
+
+              </button>
+
+            </form>
+
+          </div>
+
+        </div>
+
+
+
+      </div><!-- /tab-content -->
+
+    </div><!-- /container -->
+
+  </main>
+
+
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- App JS -->
+
+  <script src="app.js?v=7"></script>
+
+</body>
+
+
+
+</html>
