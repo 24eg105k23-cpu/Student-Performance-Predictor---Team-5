@@ -8,82 +8,10 @@
 /* ============================================================
    SHARED DATA
    ============================================================ */
-const students = [
-  {
-    id: '1', name: 'Aarav Kumar', rollNo: '001',
-    performanceScore: 45, attendanceRate: 65,
-    status: 'at-risk', lastUpdated: '2024-01-20',
-    recentAssessments: [
-      { type: 'Quiz', subject: 'Mathematics', score: 42, date: '2024-01-20' },
-      { type: 'Class Test', subject: 'English', score: 48, date: '2024-01-18' },
-      { type: 'Assignment', subject: 'Science', score: 40, date: '2024-01-15' },
-    ],
-    riskFactors: ['Low attendance', 'Declining scores', 'Poor engagement'],
-    interventionNeeded: true,
-    trend: 'declining',
-  },
-  {
-    id: '2', name: 'Priya Sharma', rollNo: '002',
-    performanceScore: 78, attendanceRate: 92,
-    status: 'excellent', lastUpdated: '2024-01-20',
-    recentAssessments: [
-      { type: 'Mid-term', subject: 'Mathematics', score: 85, date: '2024-01-20' },
-      { type: 'Quiz', subject: 'English', score: 75, date: '2024-01-18' },
-      { type: 'Project', subject: 'Science', score: 78, date: '2024-01-15' },
-    ],
-    riskFactors: [],
-    interventionNeeded: false,
-    trend: 'improving',
-  },
-  {
-    id: '3', name: 'Rajesh Patel', rollNo: '003',
-    performanceScore: 62, attendanceRate: 78,
-    status: 'average', lastUpdated: '2024-01-20',
-    recentAssessments: [
-      { type: 'Quiz', subject: 'Mathematics', score: 65, date: '2024-01-20' },
-      { type: 'Class Test', subject: 'English', score: 60, date: '2024-01-18' },
-      { type: 'Assignment', subject: 'Science', score: 58, date: '2024-01-15' },
-    ],
-    riskFactors: ['Moderate attendance', 'Fluctuating scores'],
-    interventionNeeded: false,
-    trend: 'stable',
-  },
-  {
-    id: '4', name: 'Neha Singh', rollNo: '004',
-    performanceScore: 88, attendanceRate: 95,
-    status: 'excellent', lastUpdated: '2024-01-20',
-    recentAssessments: [
-      { type: 'Final Exam', subject: 'Mathematics', score: 92, date: '2024-01-20' },
-      { type: 'Quiz', subject: 'English', score: 88, date: '2024-01-18' },
-      { type: 'Project', subject: 'Science', score: 85, date: '2024-01-15' },
-    ],
-    riskFactors: [],
-    interventionNeeded: false,
-    trend: 'improving',
-  },
-  {
-    id: '5', name: 'Arjun Desai', rollNo: '005',
-    performanceScore: 52, attendanceRate: 71,
-    status: 'at-risk', lastUpdated: '2024-01-20',
-    recentAssessments: [
-      { type: 'Quiz', subject: 'Mathematics', score: 50, date: '2024-01-20' },
-      { type: 'Class Test', subject: 'English', score: 55, date: '2024-01-18' },
-      { type: 'Assignment', subject: 'Science', score: 48, date: '2024-01-15' },
-    ],
-    riskFactors: ['Low performance', 'Irregular attendance'],
-    interventionNeeded: true,
-    trend: 'declining',
-  },
-];
+let students = [];
 
 /* Attendance records (mutable) */
-let attendanceRecords = [
-  { rollNo: '001', studentName: 'Aarav Kumar', status: 'present' },
-  { rollNo: '002', studentName: 'Priya Sharma', status: 'present' },
-  { rollNo: '003', studentName: 'Rajesh Patel', status: 'absent' },
-  { rollNo: '004', studentName: 'Neha Singh', status: 'present' },
-  { rollNo: '005', studentName: 'Arjun Desai', status: 'leave' },
-];
+let attendanceRecords = [];
 
 /* Monitor state */
 let monitorSearchTerm = '';
@@ -156,15 +84,78 @@ function clearInvalid(inputId) {
 /* ============================================================
    DASHBOARD
    ============================================================ */
+let dashboardChart = null;
+
 function initDashboard() {
   const atRisk = students.filter(s => s.status === 'at-risk').length;
   const exc = students.filter(s => s.status === 'excellent').length;
-  const avgPerf = (students.reduce((sum, s) => sum + s.performanceScore, 0) / students.length).toFixed(1);
+  const sumScores = students.reduce((sum, s) => sum + s.performanceScore, 0);
+  const avgPerf = students.length > 0 ? (sumScores / students.length).toFixed(1) : '0.0';
 
   setText('dash-total', students.length);
   setText('dash-atrisk', atRisk);
   setText('dash-excellent', exc);
   setText('dash-avg', avgPerf + '%');
+
+  // Initialize Bar Chart
+  const chartCtx = document.getElementById('performanceChart');
+  if (chartCtx) {
+    if (dashboardChart) {
+      dashboardChart.destroy();
+    }
+
+    const isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+    const textColor = isDark ? '#f8f9fa' : '#212529';
+    const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+
+    const excCount = students.filter(s => s.status === 'excellent').length;
+    const avgCount = students.filter(s => s.status === 'average').length;
+    const atRiskCount = students.filter(s => s.status === 'at-risk').length;
+
+    const labels = ['Excellent', 'Average', 'At Risk'];
+    const dataPoints = [excCount, avgCount, atRiskCount];
+    const bgColors = [
+      'rgba(25, 135, 84, 0.7)',   // Green
+      'rgba(13, 110, 253, 0.7)',  // Blue
+      'rgba(220, 53, 69, 0.7)'    // Red
+    ];
+
+    dashboardChart = new Chart(chartCtx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Number of Students',
+          data: dataPoints,
+          backgroundColor: bgColors,
+          borderWidth: 1,
+          borderColor: bgColors.map(c => c.replace('0.7)', '1)'))
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              color: textColor,
+              stepSize: 1,
+              precision: 0
+            },
+            grid: { color: gridColor }
+          },
+          x: {
+            ticks: { color: textColor },
+            grid: { display: false }
+          }
+        }
+      }
+    });
+  }
 
   const tbody = document.getElementById('dashboard-tbody');
   tbody.innerHTML = '';
@@ -334,12 +325,13 @@ function renderAttendanceTable() {
       <td class="fw-medium">${rec.rollNo}</td>
       <td>${rec.studentName}</td>
       <td>
-        <select class="form-select form-select-sm" style="width:140px"
-          onchange="updateAttendanceStatus('${rec.rollNo}', this.value)">
-          <option value="present" ${rec.status === 'present' ? 'selected' : ''}>Present</option>
-          <option value="absent"  ${rec.status === 'absent' ? 'selected' : ''}>Absent</option>
-          <option value="leave"   ${rec.status === 'leave' ? 'selected' : ''}>On Leave</option>
-        </select>
+        <div class="btn-group btn-group-sm flex-wrap w-100" role="group">
+          <input type="radio" class="btn-check" name="att-${rec.rollNo}" id="present-${rec.rollNo}" value="present" ${rec.status === 'present' ? 'checked' : ''} onchange="updateAttendanceStatus('${rec.rollNo}', this.value)">
+          <label class="btn btn-outline-success w-50" for="present-${rec.rollNo}">Present</label>
+
+          <input type="radio" class="btn-check" name="att-${rec.rollNo}" id="absent-${rec.rollNo}" value="absent" ${rec.status === 'absent' ? 'checked' : ''} onchange="updateAttendanceStatus('${rec.rollNo}', this.value)">
+          <label class="btn btn-outline-danger w-50" for="absent-${rec.rollNo}">Absent</label>
+        </div>
       </td>
     `;
     tbody.appendChild(tr);
@@ -362,7 +354,6 @@ function updateAttendanceStatus(rollNo, newStatus) {
 function updateAttendanceSummary() {
   setText('att-present', attendanceRecords.filter(r => r.status === 'present').length);
   setText('att-absent', attendanceRecords.filter(r => r.status === 'absent').length);
-  setText('att-leave', attendanceRecords.filter(r => r.status === 'leave').length);
 }
 
 function handleAttendanceSubmit(e) {
@@ -383,15 +374,40 @@ function handleAttendanceSubmit(e) {
 
   if (!valid) return;
 
-  showEl('attendance-success-alert');
-  setText('attendance-success-msg', `Attendance recorded successfully for ${date}!`);
   document.getElementById('attendance-submit-btn').disabled = true;
 
-  setTimeout(() => {
-    hideEl('attendance-success-alert');
-    document.getElementById('attendance-submit-btn').disabled = false;
-  }, 2000);
+  const payload = {
+    date: date,
+    records: attendanceRecords
+  };
+
+  fetch('/spp/api/attendance', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+    .then(res => res.json())
+    .catch(err => {
+      // If server returns non-json error, catch it
+      return { status: 'error', error: 'Server connection failed.' };
+    })
+    .then(data => {
+      if (data && data.status === 'success') {
+        alert("Attendance submitted successfully!");
+        showEl('attendance-success-alert');
+        setText('attendance-success-msg', `Attendance recorded successfully for ${date}!`);
+
+        setTimeout(() => {
+          hideEl('attendance-success-alert');
+          document.getElementById('attendance-submit-btn').disabled = false;
+        }, 2000);
+      } else {
+        alert("Error: " + (data.error || "Failed to record attendance"));
+        document.getElementById('attendance-submit-btn').disabled = false;
+      }
+    });
 }
+
 
 /* ============================================================
    ASSESSMENT FORM
@@ -485,18 +501,47 @@ function handleAssessmentSubmit(e) {
 
   if (!valid) return;
 
-  showEl('assessment-success-alert');
   document.getElementById('assessment-submit-btn').disabled = true;
 
-  setTimeout(() => {
-    hideEl('assessment-success-alert');
-    document.getElementById('assessment-form').reset();
-    document.getElementById('asmt-date').value = today();
-    document.getElementById('asmt-maxScore').value = '100';
-    setText('asmt-percentage', '0%');
-    setText('asmt-feedback-counter', '0/500 characters');
-    document.getElementById('assessment-submit-btn').disabled = false;
-  }, 2000);
+  const payload = {
+    rollNo: rollNo,
+    assessmentType: document.getElementById('asmt-type').value,
+    subject: document.getElementById('asmt-subject').value,
+    score: parseFloat(score),
+    maxScore: parseFloat(maxScore)
+  };
+
+  fetch('/spp/api/assessments', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+    .then(res => res.json())
+    .then(data => {
+      if (data.status === 'success') {
+        showEl('assessment-success-alert');
+
+        // Also potentially refresh student data here if needed, or wait for next page load
+
+        setTimeout(() => {
+          hideEl('assessment-success-alert');
+          document.getElementById('assessment-form').reset();
+          document.getElementById('asmt-date').value = today();
+          document.getElementById('asmt-maxScore').value = '100';
+          setText('asmt-percentage', '0%');
+          setText('asmt-feedback-counter', '0/500 characters');
+          document.getElementById('assessment-submit-btn').disabled = false;
+        }, 2000);
+      } else {
+        alert("Error: " + (data.error || "Failed to record assessment"));
+        document.getElementById('assessment-submit-btn').disabled = false;
+      }
+    })
+    .catch(err => {
+      console.error("Assessment Error:", err);
+      alert("Network error. Please try again.");
+      document.getElementById('assessment-submit-btn').disabled = false;
+    });
 }
 
 /* ============================================================
@@ -762,8 +807,27 @@ function initMessageForm() {
 /* ============================================================
    INIT
    ============================================================ */
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   initThemeToggle();
+
+  try {
+    const res = await fetch('/spp/api/students');
+    if (res.ok) {
+      students = await res.json();
+
+      // Initialize basic attendance data for all students dynamically
+      attendanceRecords = students.map(s => ({
+        rollNo: s.rollNo,
+        studentName: s.name,
+        status: 'present' // default
+      }));
+    } else {
+      console.error("Failed to fetch students data, using empty arrays.");
+    }
+  } catch (err) {
+    console.error("Error fetching dynamic data:", err);
+  }
+
   initDashboard();
   initMarksForm();
   initAttendanceForm();

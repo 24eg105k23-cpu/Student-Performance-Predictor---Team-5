@@ -307,6 +307,18 @@ tr.row-excellent {
   background-color: var(--success-bg) !important;
 }
 
+tr.row-present {
+  background-color: var(--success-bg) !important;
+}
+
+tr.row-absent {
+  background-color: var(--danger-bg) !important;
+}
+
+tr.row-leave {
+  background-color: var(--warning-bg) !important;
+}
+
 tr.row-intervention {
   background-color: rgba(239, 68, 68, 0.08) !important;
 }
@@ -477,6 +489,11 @@ tr.row-intervention {
   border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
+.bg-warning-subtle {
+  background-color: var(--warning-bg) !important;
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
 .risk-factor-item {
   display: flex;
   align-items: center;
@@ -497,6 +514,23 @@ tr.row-intervention {
 
 [data-bs-theme="dark"] .risk-factor-item {
   color: #fca5a5;
+}
+
+.assessment-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background-color: var(--assessment-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 0.75rem;
+  margin-bottom: 0.75rem;
+  transition: all 0.2s ease;
+}
+
+.assessment-item:hover {
+  background-color: var(--assessment-hover);
+  transform: scale(1.02);
 }
 
 /* Animations */

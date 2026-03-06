@@ -1,58 +1,22 @@
 /**
  * Student Performance Predictor
  * app.js — All interactive logic (Dashboard, Marks, Attendance, Assessments, Monitor)
- * Data is loaded dynamically from the Java Servlet API (/api/students)
  */
 
 'use strict';
 
 /* ============================================================
-   SHARED DATA — loaded from Oracle DB via /api/students
+   SHARED DATA
    ============================================================ */
-let students = [];           // Populated from API on load
-let attendanceRecords = [];  // Built from API data
+let students = [];
+
+/* Attendance records (mutable) */
+let attendanceRecords = [];
 
 /* Monitor state */
 let monitorSearchTerm = '';
 let monitorFilterRiskOnly = false;
 let monitorSelectedStudent = null;
-
-/**
- * Fetch all students from the Java/Oracle backend.
- * Returns the student array or [] on failure.
- */
-async function loadStudentsFromDB() {
-  try {
-    const res = await fetch('api/students');
-    if (!res.ok) throw new Error(`API returned ${res.status}`);
-    const data = await res.json();
-    // Normalise date field
-    return data.map(s => ({
-      ...s,
-      lastUpdated: s.lastUpdated || new Date().toISOString().slice(0, 10),
-      recentAssessments: s.recentAssessments || [],
-      riskFactors: s.riskFactors || (s.status === 'at-risk' ? ['Low performance detected'] : []),
-      // Store the original DB rate so we can always compute deltas correctly
-      _baseAttendanceRate: s.attendanceRate,
-    }));
-  } catch (err) {
-    console.error('Failed to load students from DB:', err);
-    showApiError(err.message);
-    return [];
-  }
-}
-
-/** Show an error banner if the DB API fails */
-function showApiError(msg) {
-  const banner = document.createElement('div');
-  banner.className = 'alert alert-danger m-3 position-fixed top-0 start-50 translate-middle-x z-3 shadow';
-  banner.style.minWidth = '340px';
-  banner.innerHTML = `<i class="bi bi-database-x me-2"></i><strong>Database Error:</strong> ${msg}.<br><small>Static data is NOT shown. Check that Oracle + Tomcat are running.</small>
-    <button type="button" class="btn-close float-end" onclick="this.parentElement.remove()"></button>`;
-  document.body.prepend(banner);
-}
-
-
 
 /* ============================================================
    HELPERS
@@ -120,19 +84,80 @@ function clearInvalid(inputId) {
 /* ============================================================
    DASHBOARD
    ============================================================ */
+let dashboardChart = null;
+
 function initDashboard() {
   const atRisk = students.filter(s => s.status === 'at-risk').length;
   const exc = students.filter(s => s.status === 'excellent').length;
-  const avgPerf = (students.reduce((sum, s) => sum + s.performanceScore, 0) / students.length).toFixed(1);
+  const sumScores = students.reduce((sum, s) => sum + s.performanceScore, 0);
+  const avgPerf = students.length > 0 ? (sumScores / students.length).toFixed(1) : '0.0';
 
   setText('dash-total', students.length);
   setText('dash-atrisk', atRisk);
   setText('dash-excellent', exc);
   setText('dash-avg', avgPerf + '%');
 
-  const tbody = document.getElementById('dashboard-tbody');
-  if (!tbody) return; // Dashboard was removed from index.html by user request
+  // Initialize Bar Chart
+  const chartCtx = document.getElementById('performanceChart');
+  if (chartCtx) {
+    if (dashboardChart) {
+      dashboardChart.destroy();
+    }
 
+    const isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+    const textColor = isDark ? '#f8f9fa' : '#212529';
+    const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+
+    const excCount = students.filter(s => s.status === 'excellent').length;
+    const avgCount = students.filter(s => s.status === 'average').length;
+    const atRiskCount = students.filter(s => s.status === 'at-risk').length;
+
+    const labels = ['Excellent', 'Average', 'At Risk'];
+    const dataPoints = [excCount, avgCount, atRiskCount];
+    const bgColors = [
+      'rgba(25, 135, 84, 0.7)',   // Green
+      'rgba(13, 110, 253, 0.7)',  // Blue
+      'rgba(220, 53, 69, 0.7)'    // Red
+    ];
+
+    dashboardChart = new Chart(chartCtx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Number of Students',
+          data: dataPoints,
+          backgroundColor: bgColors,
+          borderWidth: 1,
+          borderColor: bgColors.map(c => c.replace('0.7)', '1)'))
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              color: textColor,
+              stepSize: 1,
+              precision: 0
+            },
+            grid: { color: gridColor }
+          },
+          x: {
+            ticks: { color: textColor },
+            grid: { display: false }
+          }
+        }
+      }
+    });
+  }
+
+  const tbody = document.getElementById('dashboard-tbody');
   tbody.innerHTML = '';
   students.forEach(s => {
     const tr = document.createElement('tr');
@@ -181,36 +206,100 @@ function showDashboardDetail(student) {
         <div class="progress-bar bg-info" style="width:${student.attendanceRate}%"></div>
       </div>
     </div>
-    <div class="col-12 mt-3">
-      <p class="text-muted small mb-2 fw-medium">Recent Assessments:</p>
-      ${student.recentAssessments && student.recentAssessments.length > 0 ? `
-        <div class="table-responsive">
-          <table class="table table-sm table-bordered text-center align-middle caption-top">
-            <thead class="table-light">
-              <tr>
-                <th scope="col" style="font-size: 0.85rem">Date</th>
-                <th scope="col" style="font-size: 0.85rem">Type</th>
-                <th scope="col" style="font-size: 0.85rem">Subject</th>
-                <th scope="col" style="font-size: 0.85rem">Score</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${student.recentAssessments.map(a => `
-                <tr style="font-size: 0.85rem">
-                  <td class="text-muted">${a.date}</td>
-                  <td class="text-capitalize">${a.type.replace('-', ' ')}</td>
-                  <td class="text-capitalize">${a.subject}</td>
-                  <td class="fw-medium">${a.score}/${a.maxScore} <span class="text-muted small">(${((a.score / a.maxScore) * 100).toFixed(1)}%)</span></td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </div>
-      ` : '<p class="text-muted small fst-italic">No assessments recorded recently.</p>'}
-    </div>
   `);
 }
 
+/* ============================================================
+   MARKS FORM
+   ============================================================ */
+function initMarksForm() {
+  const dateInput = document.getElementById('marks-date');
+  if (dateInput && !dateInput.value) dateInput.value = today();
+
+  // Live percentage update
+  ['marks-marksObtained', 'marks-maxMarks'].forEach(id => {
+    document.getElementById(id)?.addEventListener('input', updateMarksPercentage);
+  });
+
+  document.getElementById('marks-form')?.addEventListener('submit', handleMarksSubmit);
+}
+
+function updateMarksPercentage() {
+  const obtained = parseFloat(document.getElementById('marks-marksObtained').value) || 0;
+  const max = parseFloat(document.getElementById('marks-maxMarks').value) || 0;
+  const pct = max > 0 ? ((obtained / max) * 100).toFixed(2) : '0';
+  setText('marks-percentage', pct + '%');
+}
+
+function handleMarksSubmit(e) {
+  e.preventDefault();
+  const studentName = document.getElementById('marks-studentName').value.trim();
+  const rollNo = document.getElementById('marks-rollNo').value.trim();
+  const marksObtained = document.getElementById('marks-marksObtained').value;
+  const maxMarks = document.getElementById('marks-maxMarks').value;
+  const date = document.getElementById('marks-date').value;
+
+  // Clear previous errors
+  ['marks-studentName', 'marks-rollNo', 'marks-marksObtained', 'marks-maxMarks', 'marks-date']
+    .forEach(clearInvalid);
+
+  let valid = true;
+
+  if (!studentName) {
+    markInvalid('marks-studentName', 'marks-studentName-error', 'Student name is required');
+    valid = false;
+  } else if (studentName.length < 2) {
+    markInvalid('marks-studentName', 'marks-studentName-error', 'Student name must be at least 2 characters');
+    valid = false;
+  }
+
+  if (!rollNo) {
+    markInvalid('marks-rollNo', 'marks-rollNo-error', 'Roll number is required');
+    valid = false;
+  } else if (!/^\d+$/.test(rollNo)) {
+    markInvalid('marks-rollNo', 'marks-rollNo-error', 'Roll number must contain only digits');
+    valid = false;
+  }
+
+  if (!marksObtained) {
+    markInvalid('marks-marksObtained', 'marks-marksObtained-error', 'Marks obtained is required');
+    valid = false;
+  } else if (parseFloat(marksObtained) < 0) {
+    markInvalid('marks-marksObtained', 'marks-marksObtained-error', 'Marks cannot be negative');
+    valid = false;
+  } else if (parseFloat(marksObtained) > parseFloat(maxMarks)) {
+    markInvalid('marks-marksObtained', 'marks-marksObtained-error', `Marks cannot exceed ${maxMarks}`);
+    valid = false;
+  }
+
+  if (!maxMarks) {
+    markInvalid('marks-maxMarks', 'marks-maxMarks-error', 'Max marks is required');
+    valid = false;
+  } else if (parseFloat(maxMarks) <= 0) {
+    markInvalid('marks-maxMarks', 'marks-maxMarks-error', 'Max marks must be greater than 0');
+    valid = false;
+  }
+
+  if (!date) {
+    markInvalid('marks-date', 'marks-date-error', 'Date is required');
+    valid = false;
+  }
+
+  if (!valid) return;
+
+  // Success
+  showEl('marks-success-alert');
+  document.getElementById('marks-submit-btn').disabled = true;
+
+  setTimeout(() => {
+    hideEl('marks-success-alert');
+    document.getElementById('marks-form').reset();
+    document.getElementById('marks-date').value = today();
+    document.getElementById('marks-maxMarks').value = '100';
+    setText('marks-percentage', '0%');
+    document.getElementById('marks-submit-btn').disabled = false;
+  }, 2000);
+}
 
 /* ============================================================
    ATTENDANCE FORM
@@ -226,129 +315,40 @@ function initAttendanceForm() {
 }
 
 function renderAttendanceTable() {
-  const grid = document.getElementById('attendance-grid');
-  if (grid) {
-    grid.innerHTML = '';
-    attendanceRecords.forEach(rec => {
-      // Extract short label from roll number (last 3 chars, e.g. "K01" from "24EG105K01")
-      let label = rec.rollNo.slice(-3);
-      if (rec.rollNo.includes('505K')) {
-        label = 'LE' + rec.rollNo.slice(-2);
-      }
+  const tbody = document.getElementById('attendance-tbody');
+  tbody.innerHTML = '';
+  attendanceRecords.forEach(rec => {
+    const tr = document.createElement('tr');
+    tr.className = `row-${rec.status}`;
+    tr.id = `att-row-${rec.rollNo}`;
+    tr.innerHTML = `
+      <td class="fw-medium">${rec.rollNo}</td>
+      <td>${rec.studentName}</td>
+      <td>
+        <div class="btn-group btn-group-sm flex-wrap w-100" role="group">
+          <input type="radio" class="btn-check" name="att-${rec.rollNo}" id="present-${rec.rollNo}" value="present" ${rec.status === 'present' ? 'checked' : ''} onchange="updateAttendanceStatus('${rec.rollNo}', this.value)">
+          <label class="btn btn-outline-success w-50" for="present-${rec.rollNo}">Present</label>
 
-      const box = document.createElement('div');
-      box.id = `att-box-${rec.rollNo}`;
-      box.title = `${rec.rollNo} — ${rec.studentName}`;
-      box.style.cssText = `
-        width: 64px; height: 64px;
-        display: flex; align-items: center; justify-content: center;
-        border-radius: 10px; cursor: pointer;
-        font-weight: 700; font-size: 0.85rem;
-        user-select: none; transition: all 0.15s ease;
-        border: 2px solid transparent;
-      `;
-      applyBoxStyle(box, rec.status);
-      box.textContent = label;
-
-      box.addEventListener('click', () => {
-        const newStatus = rec.status === 'present' ? 'absent' : 'present';
-        updateAttendanceStatus(rec.rollNo, newStatus);
-        applyBoxStyle(box, newStatus);
-      });
-
-      grid.appendChild(box);
-    });
-  }
-}
-
-/** Apply green/red style to a single attendance box */
-function applyBoxStyle(box, status) {
-  if (status === 'present') {
-    box.style.background = 'rgba(25, 135, 84, 0.2)';
-    box.style.color = '#198754';
-    box.style.borderColor = '#198754';
-  } else {
-    box.style.background = 'rgba(220, 53, 69, 0.2)';
-    box.style.color = '#dc3545';
-    box.style.borderColor = '#dc3545';
-  }
+          <input type="radio" class="btn-check" name="att-${rec.rollNo}" id="absent-${rec.rollNo}" value="absent" ${rec.status === 'absent' ? 'checked' : ''} onchange="updateAttendanceStatus('${rec.rollNo}', this.value)">
+          <label class="btn btn-outline-danger w-50" for="absent-${rec.rollNo}">Absent</label>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
 }
 
 function updateAttendanceStatus(rollNo, newStatus) {
-  // 1. Update attendance record
   const rec = attendanceRecords.find(r => r.rollNo === rollNo);
-  if (rec) rec.status = newStatus;
-  updateAttendanceSummary();
-  hideEl('attendance-records-error');
-
-  // 2. Update this student's attendanceRate (per-student, not class-wide)
-  const student = students.find(s => s.rollNo === rollNo);
-  if (student) {
-    const base = student._baseAttendanceRate ?? student.attendanceRate;
-    student.attendanceRate = newStatus === 'absent'
-      ? Math.max(0, Math.round(base - 3))
-      : Math.round(base);
-
-    // 3. Recalculate risk status
-    if (student.attendanceRate < 60 || student.performanceScore < 45) {
-      student.status = 'at-risk';
-    } else if (student.attendanceRate >= 85 && student.performanceScore >= 75) {
-      student.status = 'excellent';
-    } else {
-      student.status = 'average';
+  if (rec) {
+    rec.status = newStatus;
+    const tr = document.getElementById(`att-row-${rollNo}`);
+    if (tr) {
+      tr.className = `row-${newStatus}`;
     }
   }
-
-  // 4. Refresh dashboard
-  refreshDashboard();
-}
-
-/** Redraws dashboard summary and table using current students[] state */
-function refreshDashboard() {
-  const total = students.length;
-  const atRisk = students.filter(s => s.status === 'at-risk').length;
-  const exc = students.filter(s => s.status === 'excellent').length;
-  const avg = total > 0
-    ? (students.reduce((sum, s) => sum + s.performanceScore, 0) / total).toFixed(1)
-    : '0.0';
-
-  setText('dash-total', total);
-  setText('dash-atrisk', atRisk);
-  setText('dash-excellent', exc);
-  setText('dash-avg', avg + '%');
-  setText('mon-total', total);
-  setText('mon-atrisk', atRisk);
-  setText('mon-excellent', exc);
-
-  // Re-render dashboard table
-  const tbody = document.getElementById('dashboard-tbody');
-  if (tbody) {
-    tbody.innerHTML = '';
-    students.forEach(s => {
-      const tr = document.createElement('tr');
-      tr.className = `cursor-pointer ${statusRowClass(s.status)}`;
-      tr.style.cursor = 'pointer';
-      tr.innerHTML = `
-        <td class="fw-medium">${s.name}</td>
-        <td>${s.rollNo}</td>
-        <td>
-          <div class="fw-medium small">${s.performanceScore}%</div>
-          ${progressBar(s.performanceScore, 'bg-primary')}
-        </td>
-        <td>
-          <div class="fw-medium small">${s.attendanceRate}%</div>
-          ${progressBar(s.attendanceRate, 'bg-info')}
-        </td>
-        <td>${statusBadge(s.status)}</td>
-        <td class="text-muted small">${s.lastUpdated}</td>
-      `;
-      tr.addEventListener('click', () => showDashboardDetail(s));
-      tbody.appendChild(tr);
-    });
-  }
-
-  // Redraw the charts with fresh data
-  initDashboardCharts(students);
+  updateAttendanceSummary();
+  hideEl('attendance-records-error');
 }
 
 function updateAttendanceSummary() {
@@ -374,186 +374,173 @@ function handleAttendanceSubmit(e) {
 
   if (!valid) return;
 
-  const submitBtn = document.getElementById('attendance-submit-btn');
-  submitBtn.disabled = true;
+  document.getElementById('attendance-submit-btn').disabled = true;
 
-  fetch('api/attendance', {
+  const payload = {
+    date: date,
+    records: attendanceRecords
+  };
+
+  fetch('/spp/api/attendance', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      date: date,
-      records: attendanceRecords.map(r => ({ rollNo: r.rollNo, status: r.status }))
-    })
+    body: JSON.stringify(payload)
   })
-    .then(res => {
-      const contentType = res.headers.get('content-type') || '';
-      if (!contentType.includes('application/json')) {
-        if (res.status === 404) {
-          throw new Error('Attendance API not found (404). Rebuild and redeploy the Java app so AttendanceApiServlet is included.');
-        }
-        return res.text().then(t => { throw new Error(res.status + ': ' + (t || res.statusText).slice(0, 80)); });
-      }
-      return res.json();
+    .then(res => res.json())
+    .catch(err => {
+      // If server returns non-json error, catch it
+      return { status: 'error', error: 'Server connection failed.' };
     })
     .then(data => {
-      if (data.error) {
-        alert('Failed to save attendance: ' + data.error);
-        submitBtn.disabled = false;
-        return;
+      if (data && data.status === 'success') {
+        alert("Attendance submitted successfully!");
+        showEl('attendance-success-alert');
+        setText('attendance-success-msg', `Attendance recorded successfully for ${date}!`);
+
+        setTimeout(() => {
+          hideEl('attendance-success-alert');
+          document.getElementById('attendance-submit-btn').disabled = false;
+        }, 2000);
+      } else {
+        alert("Error: " + (data.error || "Failed to record attendance"));
+        document.getElementById('attendance-submit-btn').disabled = false;
       }
-      showEl('attendance-success-alert');
-      setText('attendance-success-msg', `Attendance recorded successfully for ${date}!`);
-      // Re-fetch students so dashboard shows updated attendance rates from DB
-      return loadStudentsFromDB();
-    })
-    .then(freshStudents => {
-      if (Array.isArray(freshStudents) && freshStudents.length > 0) {
-        students = freshStudents;
-        refreshDashboard();
-        initDashboardCharts(students);
-        initMonitor();
-      }
-      setTimeout(() => {
-        hideEl('attendance-success-alert');
-        submitBtn.disabled = false;
-      }, 2000);
-    })
-    .catch(err => {
-      console.error('Attendance submit error:', err);
-      alert(err.message || 'Failed to save attendance. Check console.');
-      submitBtn.disabled = false;
     });
 }
 
+
 /* ============================================================
-   MARKS AND ASSESSMENT FORM
+   ASSESSMENT FORM
    ============================================================ */
-function initMarksForm() {
-  // Live percentage update
-  ['marks-marksObtained', 'marks-maxMarks'].forEach(id => {
-    document.getElementById(id)?.addEventListener('input', updateMarksPercentage);
+function initAssessmentForm() {
+  const dateInput = document.getElementById('asmt-date');
+  if (dateInput && !dateInput.value) dateInput.value = today();
+
+  ['asmt-score', 'asmt-maxScore'].forEach(id => {
+    document.getElementById(id)?.addEventListener('input', updateAsmtPercentage);
   });
 
-  // Auto-set Max Score based on assessment type
-  document.getElementById('marks-type')?.addEventListener('change', function () {
-    const type = this.value;
-    const maxScoreEl = document.getElementById('marks-maxMarks');
-    if (type === 'final') {
-      maxScoreEl.value = '50';
-    } else if (type === 'assignment') {
-      maxScoreEl.value = '10';
-    } else {
-      maxScoreEl.value = '20';
+  document.getElementById('asmt-feedback')?.addEventListener('input', function () {
+    const len = this.value.length;
+    const count = document.getElementById('asmt-feedback-counter');
+    if (count) {
+      count.textContent = `${len}/500 characters`;
+      count.className = len > 500 ? 'text-danger' : 'text-muted';
     }
-    updateMarksPercentage();
   });
 
-  document.getElementById('marks-form')?.addEventListener('submit', handleMarksSubmit);
+  document.getElementById('assessment-form')?.addEventListener('submit', handleAssessmentSubmit);
 }
 
-function updateMarksPercentage() {
-  const score = parseFloat(document.getElementById('marks-marksObtained').value) || 0;
-  const maxScore = parseFloat(document.getElementById('marks-maxMarks').value) || 0;
+function updateAsmtPercentage() {
+  const score = parseFloat(document.getElementById('asmt-score').value) || 0;
+  const maxScore = parseFloat(document.getElementById('asmt-maxScore').value) || 0;
   const pct = maxScore > 0 ? ((score / maxScore) * 100).toFixed(2) : '0';
-  setText('marks-percentage', pct + '%');
+  setText('asmt-percentage', pct + '%');
 }
 
-function handleMarksSubmit(e) {
+function handleAssessmentSubmit(e) {
   e.preventDefault();
-  const rollNo = document.getElementById('marks-rollNo').value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-  const score = document.getElementById('marks-marksObtained').value;
-  const maxScore = document.getElementById('marks-maxMarks').value;
+  const studentName = document.getElementById('asmt-studentName').value.trim();
+  const rollNo = document.getElementById('asmt-rollNo').value.trim();
+  const score = document.getElementById('asmt-score').value;
+  const maxScore = document.getElementById('asmt-maxScore').value;
+  const date = document.getElementById('asmt-date').value;
+  const feedback = document.getElementById('asmt-feedback').value;
 
-  ['marks-rollNo', 'marks-marksObtained', 'marks-maxMarks'].forEach(clearInvalid);
+  ['asmt-studentName', 'asmt-rollNo', 'asmt-score', 'asmt-maxScore', 'asmt-date'].forEach(clearInvalid);
+  hideEl('asmt-feedback-error');
 
   let valid = true;
 
-
+  if (!studentName) {
+    markInvalid('asmt-studentName', 'asmt-studentName-error', 'Student name is required');
+    valid = false;
+  } else if (studentName.length < 2) {
+    markInvalid('asmt-studentName', 'asmt-studentName-error', 'Student name must be at least 2 characters');
+    valid = false;
+  }
 
   if (!rollNo) {
-    markInvalid('marks-rollNo', 'marks-rollNo-error', 'Roll number is required');
+    markInvalid('asmt-rollNo', 'asmt-rollNo-error', 'Roll number is required');
     valid = false;
-  } else if (!/^[a-zA-Z0-9]+$/.test(rollNo)) {
-    markInvalid('marks-rollNo', 'marks-rollNo-error', 'Roll number must contain only letters and digits');
+  } else if (!/^\d+$/.test(rollNo)) {
+    markInvalid('asmt-rollNo', 'asmt-rollNo-error', 'Roll number must contain only digits');
     valid = false;
   }
 
   if (!score) {
-    markInvalid('marks-marksObtained', 'marks-marksObtained-error', 'Score is required');
+    markInvalid('asmt-score', 'asmt-score-error', 'Score is required');
     valid = false;
   } else if (parseFloat(score) < 0) {
-    markInvalid('marks-marksObtained', 'marks-marksObtained-error', 'Score cannot be negative');
+    markInvalid('asmt-score', 'asmt-score-error', 'Score cannot be negative');
     valid = false;
   } else if (parseFloat(score) > parseFloat(maxScore)) {
-    markInvalid('marks-marksObtained', 'marks-marksObtained-error', `Score cannot exceed ${maxScore}`);
+    markInvalid('asmt-score', 'asmt-score-error', `Score cannot exceed ${maxScore}`);
     valid = false;
   }
 
   if (!maxScore) {
-    markInvalid('marks-maxMarks', 'marks-maxMarks-error', 'Max score is required');
+    markInvalid('asmt-maxScore', 'asmt-maxScore-error', 'Max score is required');
     valid = false;
   } else if (parseFloat(maxScore) <= 0) {
-    markInvalid('marks-maxMarks', 'marks-maxMarks-error', 'Max score must be greater than 0');
+    markInvalid('asmt-maxScore', 'asmt-maxScore-error', 'Max score must be greater than 0');
+    valid = false;
+  }
+
+  if (!date) {
+    markInvalid('asmt-date', 'asmt-date-error', 'Date is required');
+    valid = false;
+  }
+
+  if (feedback.length > 500) {
+    const errEl = document.getElementById('asmt-feedback-error');
+    if (errEl) { errEl.textContent = 'Feedback must be 500 characters or less'; errEl.classList.remove('d-none'); }
     valid = false;
   }
 
   if (!valid) return;
 
-  const submitBtn = document.getElementById('marks-submit-btn');
-  submitBtn.disabled = true;
+  document.getElementById('assessment-submit-btn').disabled = true;
 
-  fetch('api/assessments', {
+  const payload = {
+    rollNo: rollNo,
+    assessmentType: document.getElementById('asmt-type').value,
+    subject: document.getElementById('asmt-subject').value,
+    score: parseFloat(score),
+    maxScore: parseFloat(maxScore)
+  };
+
+  fetch('/spp/api/assessments', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      rollNo: rollNo,
-      assessmentType: document.getElementById('marks-type').value,
-      subject: document.getElementById('marks-subject').value,
-      score: score,
-      maxScore: maxScore
-    })
+    body: JSON.stringify(payload)
   })
-    .then(res => {
-      const contentType = res.headers.get('content-type') || '';
-      if (!contentType.includes('application/json')) {
-        if (res.status === 404) {
-          throw new Error('Endpoint not found. Ensure Java backend is rebuilt/redeployed.');
-        }
-        return res.text().then(t => { throw new Error(res.status + ': ' + (t || res.statusText).slice(0, 80)); });
-      }
-      return res.json();
-    })
+    .then(res => res.json())
     .then(data => {
-      if (data.error) {
-        alert('Failed to save assessment: ' + data.error);
-        submitBtn.disabled = false;
-        return;
-      }
-      showEl('marks-success-alert');
+      if (data.status === 'success') {
+        showEl('assessment-success-alert');
 
-      // Re-fetch students so dashboard shows updated performance/risk status from DB
-      return loadStudentsFromDB();
-    })
-    .then(freshStudents => {
-      if (Array.isArray(freshStudents) && freshStudents.length > 0) {
-        students = freshStudents;
-        refreshDashboard();
-        initDashboardCharts(students);
-        initMonitor();
+        // Also potentially refresh student data here if needed, or wait for next page load
+
+        setTimeout(() => {
+          hideEl('assessment-success-alert');
+          document.getElementById('assessment-form').reset();
+          document.getElementById('asmt-date').value = today();
+          document.getElementById('asmt-maxScore').value = '100';
+          setText('asmt-percentage', '0%');
+          setText('asmt-feedback-counter', '0/500 characters');
+          document.getElementById('assessment-submit-btn').disabled = false;
+        }, 2000);
+      } else {
+        alert("Error: " + (data.error || "Failed to record assessment"));
+        document.getElementById('assessment-submit-btn').disabled = false;
       }
-      setTimeout(() => {
-        hideEl('marks-success-alert');
-        document.getElementById('marks-form').reset();
-        // Reset to default selection value of 20
-        document.getElementById('marks-maxMarks').value = '20';
-        setText('marks-percentage', '0%');
-        submitBtn.disabled = false;
-      }, 2000);
     })
     .catch(err => {
-      console.error('Assessment submit error:', err);
-      alert(err.message || 'Failed to save assessment. Check console.');
-      submitBtn.disabled = false;
+      console.error("Assessment Error:", err);
+      alert("Network error. Please try again.");
+      document.getElementById('assessment-submit-btn').disabled = false;
     });
 }
 
@@ -610,12 +597,8 @@ function renderMonitorTable() {
   setText('mon-count', filtered.length);
 
   const tbody = document.getElementById('monitor-tbody');
-  console.log("Monitor TBody element:", tbody);
   tbody.innerHTML = '';
-  console.log("Filtered students to render:", filtered.length);
-
   filtered.forEach(s => {
-    console.log("Rendering student:", s.name, s.interventionNeeded);
     const tr = document.createElement('tr');
     if (s.interventionNeeded) tr.className = 'row-intervention';
     const statusBadgeHtml = s.interventionNeeded
@@ -643,7 +626,6 @@ function renderMonitorTable() {
     `;
     tbody.appendChild(tr);
   });
-  console.log("Monitor rendering complete.");
 }
 
 function showMonitorDetails(id) {
@@ -712,73 +694,17 @@ function showMonitorDetails(id) {
   }
   setHTML('mon-details-risks', riskHtml);
 
-  // Group assessments by course
-  const subjectMap = {};
-  if (student.recentAssessments) {
-    student.recentAssessments.forEach(a => {
-      if (!subjectMap[a.subject]) {
-        subjectMap[a.subject] = {
-          courseCode: a.courseCode || 'N/A',
-          'mid1': '-', 'mid2': '-', 'unit 1 test': '-', 'unit3 test': '-', 'final': '-', 'assignment': '-'
-        };
-      }
-
-      const typeLower = a.type ? a.type.toLowerCase() : '';
-      if (subjectMap[a.subject][typeLower] !== undefined) {
-        // Evaluate true percentage for color coding
-        const pct = a.maxScore > 0 ? Math.round((a.score / a.maxScore) * 100) : 0;
-        subjectMap[a.subject][typeLower] = `<span class="${performanceColor(pct)} fw-bold">${a.score}</span>`;
-      }
-    });
-  }
-
-  let tableHtml = `
-    <div class="table-responsive">
-      <table class="table table-bordered table-striped align-middle mb-0 text-center" style="font-size: 0.9rem;">
-        <thead class="table-dark" style="background-color: #1a2c4e; color: #fff;">
-          <tr>
-            <th style="width: 5%">S.No.</th>
-            <th style="width: 15%">Course Code</th>
-            <th class="text-start" style="width: 25%">Course Name</th>
-            <th style="width: 9%">mid 1</th>
-            <th style="width: 9%">mid 2</th>
-            <th style="width: 9%">unit 1 test</th>
-            <th style="width: 9%">unit 3 test</th>
-            <th style="width: 9%">final exam</th>
-            <th style="width: 10%">assignment</th>
-          </tr>
-        </thead>
-        <tbody>
-  `;
-
-  const subjects = Object.keys(subjectMap).sort();
-  if (subjects.length === 0) {
-    tableHtml += `<tr><td colspan="9" class="text-muted py-3">No recent assessments available</td></tr>`;
-  } else {
-    subjects.forEach((subj, idx) => {
-      const scores = subjectMap[subj];
-      const data = subjectMap[subj];
-      tableHtml += `
-        <tr>
-          <td>${idx + 1}</td>
-          <td class="fw-semibold text-secondary">${data.courseCode}</td>
-          <td class="text-start fw-medium">${subj}</td>
-          <td>${data['mid1']}</td>
-          <td>${data['mid2']}</td>
-          <td>${data['unit 1 test']}</td>
-          <td>${data['unit3 test']}</td>
-          <td>${data['final']}</td>
-          <td>${data['assignment']}</td>
-        </tr>
-      `;
-    });
-  }
-  tableHtml += `
-        </tbody>
-      </table>
+  // Recent Assessments
+  const assessmentsHtml = student.recentAssessments.map(a => `
+    <div class="assessment-item">
+      <div>
+        <p class="fw-medium small mb-0">${a.type}</p>
+        <p class="text-muted" style="font-size:0.75rem;margin-bottom:0">${a.subject} &bull; ${a.date}</p>
+      </div>
+      <div class="fs-5 fw-bold ${performanceColor(a.score)}">${a.score}%</div>
     </div>
-  `;
-  setHTML('mon-details-assessments', tableHtml);
+  `).join('');
+  setHTML('mon-details-assessments', assessmentsHtml);
 
   // Scroll to details
   document.getElementById('monitor-details-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -879,164 +805,33 @@ function initMessageForm() {
 }
 
 /* ============================================================
-   DASHBOARD CHARTS
-   ============================================================ */
-function initDashboardCharts(studentData) {
-  const isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
-  const textColor = isDark ? '#adb5bd' : '#495057';
-  const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
-
-  // --- Derive data from student array ---
-  const buckets = [0, 0, 0, 0, 0]; // 0-20, 21-40, 41-60, 61-80, 81-100
-  let highRisk = 0, medRisk = 0, lowRisk = 0;
-  studentData.forEach(s => {
-    const p = s.performanceScore;
-    if (p <= 20) buckets[0]++;
-    else if (p <= 40) buckets[1]++;
-    else if (p <= 60) buckets[2]++;
-    else if (p <= 80) buckets[3]++;
-    else buckets[4]++;
-
-    if (s.status === 'at-risk') highRisk++;
-    else if (s.status === 'average') medRisk++;
-    else lowRisk++;
-  });
-
-  // --- 1. Bar Chart: Performance Distribution ---
-  const ctxBar = document.getElementById('dash-bar-chart');
-  if (ctxBar) {
-    // destroy previous instance if exists
-    if (window._dashBarChart) window._dashBarChart.destroy();
-    window._dashBarChart = new Chart(ctxBar.getContext('2d'), {
-      type: 'bar',
-      data: {
-        labels: ['0-20%', '21-40%', '41-60%', '61-80%', '81-100%'],
-        datasets: [{
-          label: 'Students',
-          data: buckets,
-          backgroundColor: ['#dc3545cc', '#fd7e14cc', '#ffc107cc', '#198754cc', '#0d6efdcc'],
-          borderWidth: 0,
-          borderRadius: 6,
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: {
-          legend: { display: false },
-          tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y} students` } }
-        },
-        scales: {
-          y: { grid: { color: gridColor }, ticks: { color: textColor, stepSize: 1 }, beginAtZero: true },
-          x: { grid: { display: false }, ticks: { color: textColor } }
-        }
-      }
-    });
-  }
-
-  // --- 2. Doughnut Chart: Risk Levels ---
-  const ctxPie = document.getElementById('dash-pie-chart');
-  if (ctxPie) {
-    if (window._dashPieChart) window._dashPieChart.destroy();
-    window._dashPieChart = new Chart(ctxPie.getContext('2d'), {
-      type: 'doughnut',
-      data: {
-        labels: ['At Risk', 'Average', 'Excellent'],
-        datasets: [{
-          data: [highRisk || 1, medRisk || 1, lowRisk || 1],
-          backgroundColor: ['#dc3545', '#fd7e14', '#198754'],
-          borderWidth: 0,
-          cutout: '68%'
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: {
-          legend: { position: 'bottom', labels: { color: textColor, padding: 10, font: { size: 11 } } }
-        }
-      }
-    });
-  }
-
-  // --- 3. Line Chart: Attendance Trend (mock weekly trend) ---
-  const ctxLine = document.getElementById('dash-line-chart');
-  if (ctxLine) {
-    if (window._dashLineChart) window._dashLineChart.destroy();
-    const avgAtt = (studentData.reduce((s, x) => s + x.attendanceRate, 0) / (studentData.length || 1)).toFixed(1);
-    window._dashLineChart = new Chart(ctxLine.getContext('2d'), {
-      type: 'line',
-      data: {
-        labels: ['Wk 1', 'Wk 2', 'Wk 3', 'Wk 4', 'Wk 5', 'Now'],
-        datasets: [{
-          label: 'Avg Attendance %',
-          data: [
-            Math.max(0, avgAtt - 8), Math.max(0, avgAtt - 5),
-            Math.max(0, avgAtt - 3), Math.max(0, avgAtt - 1),
-            avgAtt - 0.5, avgAtt
-          ].map(v => parseFloat(v).toFixed(1)),
-          borderColor: '#0dcaf0',
-          backgroundColor: 'rgba(13,202,240,0.12)',
-          fill: true,
-          tension: 0.4,
-          pointBackgroundColor: '#0dcaf0',
-          pointRadius: 4
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: {
-          legend: { display: false }
-        },
-        scales: {
-          y: { grid: { color: gridColor }, ticks: { color: textColor }, min: 0, max: 100 },
-          x: { grid: { display: false }, ticks: { color: textColor, font: { size: 10 } } }
-        }
-      }
-    });
-  }
-}
-
-/* ============================================================
-   INIT — All rendering waits for live DB data
+   INIT
    ============================================================ */
 document.addEventListener('DOMContentLoaded', async () => {
   initThemeToggle();
-  initMarksForm();
-  initMessageForm();
 
-  // Show a loading spinner until DB data arrives
-  const tbody = document.getElementById('dashboard-tbody');
-  if (tbody) {
-    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4">
-      <span class="spinner-border text-primary me-2" role="status"></span>Loading students from database...
-    </td></tr>`;
-  }
-
-  // --- Fetch live data from Oracle via Java API ---
-  students = await loadStudentsFromDB();
-
-  // Build attendanceRecords from live student data
-  attendanceRecords = students.map(s => ({
-    rollNo: s.rollNo,
-    studentName: s.name,
-    status: 'present'   // default — teacher changes on the form
-  }));
-
-  // --- Render everything with real data ---
   try {
-    console.log("Starting dashboard init");
-    initDashboard();
-    console.log("Starting chart init");
-    initDashboardCharts(students);
-    console.log("Starting monitor init");
-    initMonitor();
-    console.log("Starting attendance init");
-    initAttendanceForm();
-  } catch (err) {
-    console.error("FATAL UI ERROR:", err);
-    const errBanner = document.createElement('div');
-    errBanner.style.cssText = 'position:fixed;top:0;left:0;width:100%;z-index:9999;background:red;color:white;padding:20px;font-family:monospace;white-space:pre-wrap;';
-    errBanner.innerHTML = `<h3>FATAL UI RENDER ERROR</h3>${err.toString()}<br><br>${err.stack}`;
-    document.body.prepend(errBanner);
-  }
-});
+    const res = await fetch('/spp/api/students');
+    if (res.ok) {
+      students = await res.json();
 
+      // Initialize basic attendance data for all students dynamically
+      attendanceRecords = students.map(s => ({
+        rollNo: s.rollNo,
+        studentName: s.name,
+        status: 'present' // default
+      }));
+    } else {
+      console.error("Failed to fetch students data, using empty arrays.");
+    }
+  } catch (err) {
+    console.error("Error fetching dynamic data:", err);
+  }
+
+  initDashboard();
+  initMarksForm();
+  initAttendanceForm();
+  initAssessmentForm();
+  initMonitor();
+  initMessageForm();
+});
