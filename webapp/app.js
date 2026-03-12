@@ -247,7 +247,7 @@ function updateMarksPercentage() {
 
 function handleMarksSubmit(e) {
   e.preventDefault();
-  const rollNo = document.getElementById('marks-rollNo').value.trim();
+  const rollNo = document.getElementById('marks-rollNo').value.trim().toUpperCase();
   const assessmentType = document.getElementById('marks-type').value;
   const subject = document.getElementById('marks-subject').value;
   const marksObtained = document.getElementById('marks-marksObtained').value;
@@ -263,8 +263,8 @@ function handleMarksSubmit(e) {
   if (!rollNo) {
     markInvalid('marks-rollNo', 'marks-rollNo-error', 'Roll number is required');
     valid = false;
-  } else if (!/^\d+$/.test(rollNo)) {
-    markInvalid('marks-rollNo', 'marks-rollNo-error', 'Roll number must contain only digits');
+  } else if (!/^[A-Z0-9]+$/.test(rollNo)) {
+    markInvalid('marks-rollNo', 'marks-rollNo-error', 'Roll number must be alphanumeric');
     valid = false;
   }
 
@@ -649,10 +649,16 @@ function showMonitorDetails(id) {
 
   monitorSubjects.forEach(sub => {
     tableHtml += `<tr><td class="text-start fw-medium">${sub.label}</td>`;
+    
+    // Merge scores from both the DB specific string (e.g. "Computer Oriented Statistical Methods") 
+    // and the select value representation (e.g. "cosm") so neither overwrite each other.
+    const combinedScores = { 
+      ...(scoreMap[sub.label] || {}), 
+      ...(scoreMap[sub.key] || {}) 
+    };
+
     assessmentTypes.forEach(type => {
-      // Look up score by the subject key (e.g. 'cosm') or label (e.g. 'COSM')
-      const targetScores = scoreMap[sub.key] || scoreMap[sub.label] || {};
-      const score = targetScores[type];
+      const score = combinedScores[type];
       const displayScore = score !== undefined ? score : '-';
       tableHtml += `<td>${displayScore}</td>`;
     });
