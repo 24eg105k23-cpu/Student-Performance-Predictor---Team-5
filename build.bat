@@ -15,7 +15,7 @@ set CP=.;%LIB_DIR%*;%CATALINA_HOME%\lib\servlet-api.jar
 
 :: Compile Java Files
 echo Compiling all Java files...
-javac -d "%OUT_DIR%" -sourcepath "%SRC_DIR%" -cp "%CP%" "%SRC_DIR%\com\spp\util\*.java" "%SRC_DIR%\com\spp\model\*.java" "%SRC_DIR%\com\spp\dao\*.java" "%SRC_DIR%\com\spp\servlet\*.java"
+javac -d "%OUT_DIR%" -sourcepath "%SRC_DIR%" -cp "%CP%" "%SRC_DIR%\com\spp\util\*.java" "%SRC_DIR%\com\spp\model\*.java" "%SRC_DIR%\com\spp\dao\*.java" "%SRC_DIR%\com\spp\servlet\*.java" "%SRC_DIR%\com\spp\ml\*.java"
 
 :: Sync frontend files to webapp directory
 echo Syncing frontend files...

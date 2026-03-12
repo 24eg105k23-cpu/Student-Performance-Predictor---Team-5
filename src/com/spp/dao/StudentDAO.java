@@ -51,12 +51,20 @@ public class StudentDAO {
                 s.setAttendanceRate(rs.getInt("ATTENDANCE_RATE"));
                 s.setPerformanceScore(rs.getInt("PERFORMANCE_SCORE"));
 
-                // Determine Status based on performance and attendance matching app.js logic
-                if (s.getAttendanceRate() < 60 || s.getPerformanceScore() < 45) {
+                // Determine Status using the ML Model Prediction
+                /*
+                 * Resolve Tomcat deployment path dynamically
+                 */
+                String catalinaBase = System.getProperty("catalina.base");
+                String basePath = catalinaBase != null ? catalinaBase + "/webapps/spp" : "webapp";
+                
+                String mlPrediction = com.spp.ml.RiskPredictor.predictRisk(s, basePath);
+
+                if (mlPrediction.equals("High Risk")) {
                     s.setStatus("at-risk");
                     s.setInterventionNeeded(true);
-                    s.getRiskFactors().add("Critical performance or attendance levels detected");
-                } else if (s.getAttendanceRate() >= 85 && s.getPerformanceScore() >= 75) {
+                    s.getRiskFactors().add("ML Model detected critical performance or attendance levels");
+                } else if (mlPrediction.equals("Low Risk")) {
                     s.setStatus("excellent");
                     s.setInterventionNeeded(false);
                 } else {
