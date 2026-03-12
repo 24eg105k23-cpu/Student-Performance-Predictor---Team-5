@@ -757,17 +757,43 @@ function initMessageForm() {
       return;
     }
 
-    // Success - Placeholder for future Twilio Integration
-    console.log(`[TWILIO SIMULATION] Sending SMS to ${currentCount} students : "${content}"`);
-
-    showEl('message-success-alert');
+    // Send SMS via Fast2SMS backend
     document.getElementById('message-submit-btn').disabled = true;
+    document.getElementById('message-submit-btn').innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Sending...';
 
-    setTimeout(() => {
-      hideEl('message-success-alert');
-      contentInput.value = ''; // Only clear the text, keep the dropdown selection
-      document.getElementById('message-submit-btn').disabled = false;
-    }, 3000);
+    fetch('/spp/api/messages/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        recipient: recipientSelect.value,
+        message: content
+      })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'success') {
+          const msgEl = document.getElementById('message-success-msg');
+          if (msgEl) msgEl.textContent = `SMS sent to ${data.sent} of ${data.total} recipients via Fast2SMS!`;
+          showEl('message-success-alert');
+
+          setTimeout(() => {
+            hideEl('message-success-alert');
+            contentInput.value = '';
+            document.getElementById('message-submit-btn').disabled = false;
+            document.getElementById('message-submit-btn').innerHTML = '<i class="bi bi-send me-1"></i> Send SMS';
+          }, 3000);
+        } else {
+          alert('Error: ' + (data.message || 'Failed to send SMS'));
+          document.getElementById('message-submit-btn').disabled = false;
+          document.getElementById('message-submit-btn').innerHTML = '<i class="bi bi-send me-1"></i> Send SMS';
+        }
+      })
+      .catch(err => {
+        console.error('SMS Error:', err);
+        alert('Network error. Please try again.');
+        document.getElementById('message-submit-btn').disabled = false;
+        document.getElementById('message-submit-btn').innerHTML = '<i class="bi bi-send me-1"></i> Send SMS';
+      });
   });
 }
 

@@ -21,7 +21,7 @@ public class StudentDAO {
         List<Student> students = new ArrayList<>();
         // Attendance = 100 - (absent_count * 3) + (present_count * 1), capped [0, 100]
         // Performance = (total_score / total_max_score) * 100
-        String sql = "SELECT s.ROLL_NO, s.STUDENT_NAME, " +
+        String sql = "SELECT s.ROLL_NO, s.STUDENT_NAME, s.PHONE_NUMBER, " +
                 "       GREATEST(LEAST(100 - (COALESCE(att.ABSENT_COUNT, 0) * 3) + (COALESCE(att.PRESENT_COUNT, 0) * 1), 100), 0) AS ATTENDANCE_RATE, " +
                 "       COALESCE(perf.PERF_SCORE, 0) AS PERFORMANCE_SCORE " +
                 "FROM STUDENTS s " +
@@ -48,6 +48,7 @@ public class StudentDAO {
                 s.setId(rs.getString("ROLL_NO")); // frontend uses ID
                 s.setRollNo(rs.getString("ROLL_NO"));
                 s.setName(rs.getString("STUDENT_NAME"));
+                s.setPhoneNumber(rs.getString("PHONE_NUMBER"));
                 s.setAttendanceRate(rs.getInt("ATTENDANCE_RATE"));
                 s.setPerformanceScore(rs.getInt("PERFORMANCE_SCORE"));
 

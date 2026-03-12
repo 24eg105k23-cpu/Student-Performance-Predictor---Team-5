@@ -13,6 +13,7 @@ public class Student {
     private String trend;
     private String lastUpdated;
     private boolean interventionNeeded;
+    private String phoneNumber;
     private List<Assessment> recentAssessments = new ArrayList<>();
     private List<String> riskFactors = new ArrayList<>();
 
@@ -105,5 +106,13 @@ public class Student {
 
     public void setRiskFactors(List<String> riskFactors) {
         this.riskFactors = riskFactors;
+    }
+
+    public String getPhoneNumber() {
+        return phoneNumber;
+    }
+
+    public void setPhoneNumber(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
     }
 }
