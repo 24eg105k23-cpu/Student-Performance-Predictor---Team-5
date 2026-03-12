@@ -53,7 +53,7 @@
         <li class="nav-item" role="presentation">
           <button class="nav-link" id="tab-marks" data-bs-toggle="tab" data-bs-target="#pane-marks" type="button"
             role="tab">
-            <i class="bi bi-pencil-square me-1"></i>Enter Marks
+            <i class="bi bi-pencil-square me-1"></i>Marks & Assessments
           </button>
         </li>
         <li class="nav-item" role="presentation">
@@ -62,13 +62,6 @@
             <i class="bi bi-calendar-check me-1"></i>Attendance
           </button>
         </li>
-        <li class="nav-item" role="presentation">
-          <button class="nav-link" id="tab-assessment" data-bs-toggle="tab" data-bs-target="#pane-assessment"
-            type="button" role="tab">
-            <i class="bi bi-clipboard-data me-1"></i>Assessments
-          </button>
-        </li>
-        <li class="nav-item" role="presentation">
           <button class="nav-link" id="tab-monitor" data-bs-toggle="tab" data-bs-target="#pane-monitor" type="button"
             role="tab">
             <i class="bi bi-activity me-1"></i>Monitor
@@ -153,12 +146,12 @@
           </div>
         </div>
 
-        <!-- ===================== MARKS TAB ===================== -->
+        <!-- ===================== MARKS & ASSESSMENTS TAB ===================== -->
         <div class="tab-pane fade" id="pane-marks" role="tabpanel">
           <div class="card app-card p-3 p-md-4">
             <div class="mb-3">
-              <h2 class="section-title">Enter Student Marks</h2>
-              <p class="text-muted small">Record marks for individual subjects and assessments</p>
+              <h2 class="section-title">Enter Marks & Assessments</h2>
+              <p class="text-muted small">Record marks for individual subjects and assessments without feedback</p>
             </div>
 
             <div id="marks-success-alert" class="alert alert-success d-flex align-items-center d-none" role="alert">
@@ -167,17 +160,9 @@
             </div>
 
             <form id="marks-form" novalidate>
-              <!-- Row 1: Student Info -->
+              <!-- Row 1: Roll No -->
               <div class="row g-3 mb-3">
-                <div class="col-md-6">
-                  <label for="marks-studentName" class="form-label fw-medium">
-                    Student Name <span class="text-danger">*</span>
-                  </label>
-                  <input type="text" class="form-control" id="marks-studentName" name="studentName"
-                    placeholder="Enter student name" />
-                  <div class="invalid-feedback" id="marks-studentName-error"></div>
-                </div>
-                <div class="col-md-6">
+                <div class="col-md-12">
                   <label for="marks-rollNo" class="form-label fw-medium">
                     Roll Number <span class="text-danger">*</span>
                   </label>
@@ -187,22 +172,37 @@
                 </div>
               </div>
 
-              <!-- Row 2: Subject and Date -->
+              <!-- Row 2: Assessment Type, Subject, and Date -->
               <div class="row g-3 mb-3">
-                <div class="col-md-6">
+                <div class="col-md-4">
+                  <label for="marks-type" class="form-label fw-medium">
+                    Assessment Type <span class="text-danger">*</span>
+                  </label>
+                  <select class="form-select" id="marks-type" name="assessmentType">
+                    <option value="mid1">Mid 1</option>
+                    <option value="mid2">Mid 2</option>
+                    <option value="unit 1 test">Unit 1 Test</option>
+                    <option value="unit3 test">Unit 3 Test</option>
+                    <option value="assessment">Assessment</option>
+                    <option value="final">Final</option>
+                  </select>
+                </div>
+                <div class="col-md-4">
                   <label for="marks-subject" class="form-label fw-medium">
                     Subject <span class="text-danger">*</span>
                   </label>
                   <select class="form-select" id="marks-subject" name="subject">
-                    <option value="mathematics">Mathematics</option>
-                    <option value="english">English</option>
-                    <option value="science">Science</option>
-                    <option value="social-studies">Social Studies</option>
-                    <option value="computer-science">Computer Science</option>
-                    <option value="hindi">Hindi</option>
+                    <option value="cosm">Computer Oriented Statistical Methods</option>
+                    <option value="algorithms">Fundamentals of Computer Algorithms</option>
+                    <option value="dbms">Database Management Systems</option>
+                    <option value="python">Programming in Python</option>
+                    <option value="web-tech">Web Technologies</option>
+                    <option value="advanced-reading">Advanced Reading Comprehension Skills</option>
+                    <option value="aptitude">Quantitative Aptitude and Logical Reasoning - II</option>
+                    <option value="project">Integrated Project - II</option>
                   </select>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-4">
                   <label for="marks-date" class="form-label fw-medium">
                     Date <span class="text-danger">*</span>
                   </label>
@@ -225,8 +225,8 @@
                   <label for="marks-maxMarks" class="form-label fw-medium">
                     Max Marks <span class="text-danger">*</span>
                   </label>
-                  <input type="number" class="form-control" id="marks-maxMarks" name="maxMarks" placeholder="100"
-                    value="100" />
+                  <input type="number" class="form-control" id="marks-maxMarks" name="maxMarks" placeholder="20"
+                    value="20" />
                   <div class="invalid-feedback" id="marks-maxMarks-error"></div>
                 </div>
                 <div class="col-md-4">
@@ -236,7 +236,7 @@
               </div>
 
               <button type="submit" class="btn btn-primary w-100" id="marks-submit-btn">
-                Record Marks
+                Record Marks & Assessment
               </button>
             </form>
           </div>
@@ -257,27 +257,28 @@
             </div>
 
             <form id="attendance-form" novalidate>
-              <!-- Date -->
-              <div class="mb-3">
-                <label for="attendance-date" class="form-label fw-medium">
-                  Attendance Date <span class="text-danger">*</span>
-                </label>
-                <input type="date" class="form-control" id="attendance-date" name="date" style="max-width:220px" />
-                <div class="invalid-feedback" id="attendance-date-error"></div>
+              <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                  <label for="attendance-date" class="form-label fw-medium">
+                    Attendance Date <span class="text-danger">*</span>
+                  </label>
+                  <input type="date" class="form-control" id="attendance-date" name="date" />
+                  <div class="invalid-feedback" id="attendance-date-error"></div>
+                </div>
               </div>
 
               <!-- Summary Cards -->
-              <div class="row g-3 mb-3" id="attendance-summary-cards">
+              <div class="row g-3 mb-4" id="attendance-summary-cards">
                 <div class="col-6">
-                  <div class="card app-card p-3 bg-success-subtle">
-                    <div class="card-label">Present</div>
-                    <div class="card-value text-success" id="att-present">0</div>
+                  <div class="card app-card p-3 bg-success-subtle text-center">
+                    <div class="card-label fw-bold">Present</div>
+                    <div class="card-value text-success fs-3" id="att-present">0</div>
                   </div>
                 </div>
                 <div class="col-6">
-                  <div class="card app-card p-3 bg-danger-subtle">
-                    <div class="card-label">Absent</div>
-                    <div class="card-value text-danger" id="att-absent">0</div>
+                  <div class="card app-card p-3 bg-danger-subtle text-center">
+                    <div class="card-label fw-bold">Absent</div>
+                    <div class="card-value text-danger fs-3" id="att-absent">0</div>
                   </div>
                 </div>
               </div>
@@ -286,21 +287,12 @@
               <div id="attendance-records-error" class="alert alert-danger d-flex align-items-center d-none"
                 role="alert">
                 <i class="bi bi-exclamation-circle-fill me-2"></i>
-                All students attendance status must be recorded.
+                Please ensure attendance is marked correctly.
               </div>
 
-              <!-- Attendance Table -->
-              <div class="table-responsive mb-3">
-                <table class="table align-middle" id="attendance-table">
-                  <thead>
-                    <tr>
-                      <th>Roll No</th>
-                      <th>Student Name</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody id="attendance-tbody"></tbody>
-                </table>
+              <!-- Attendance Grid -->
+              <div id="attendance-grid" class="d-flex flex-wrap gap-3 justify-content-center mb-4">
+                 <!-- JS will populate student boxes here -->
               </div>
 
               <button type="submit" class="btn btn-primary w-100" id="attendance-submit-btn">
@@ -310,122 +302,6 @@
           </div>
         </div>
 
-        <!-- ===================== ASSESSMENT TAB ===================== -->
-        <div class="tab-pane fade" id="pane-assessment" role="tabpanel">
-          <div class="card app-card p-3 p-md-4">
-            <div class="mb-3">
-              <h2 class="section-title">Record Assessment</h2>
-              <p class="text-muted small">Document student assessments with scores and personalized feedback</p>
-            </div>
-
-            <div id="assessment-success-alert" class="alert alert-success d-flex align-items-center d-none"
-              role="alert">
-              <i class="bi bi-check-circle-fill me-2"></i>
-              Assessment recorded successfully!
-            </div>
-
-            <form id="assessment-form" novalidate>
-              <!-- Row 1: Student Info -->
-              <div class="row g-3 mb-3">
-                <div class="col-md-6">
-                  <label for="asmt-studentName" class="form-label fw-medium">
-                    Student Name <span class="text-danger">*</span>
-                  </label>
-                  <input type="text" class="form-control" id="asmt-studentName" name="studentName"
-                    placeholder="Enter student name" />
-                  <div class="invalid-feedback" id="asmt-studentName-error"></div>
-                </div>
-                <div class="col-md-6">
-                  <label for="asmt-rollNo" class="form-label fw-medium">
-                    Roll Number <span class="text-danger">*</span>
-                  </label>
-                  <input type="text" class="form-control" id="asmt-rollNo" name="rollNo"
-                    placeholder="Enter roll number" />
-                  <div class="invalid-feedback" id="asmt-rollNo-error"></div>
-                </div>
-              </div>
-
-              <!-- Row 2: Assessment Type and Subject -->
-              <div class="row g-3 mb-3">
-                <div class="col-md-6">
-                  <label for="asmt-type" class="form-label fw-medium">
-                    Assessment Type <span class="text-danger">*</span>
-                  </label>
-                  <select class="form-select" id="asmt-type" name="assessmentType">
-                    <option value="quiz">Quiz</option>
-                    <option value="mid-term">Mid Term</option>
-                    <option value="final-exam">Final Exam</option>
-                    <option value="assignment">Assignment</option>
-                    <option value="project">Project</option>
-                    <option value="class-test">Class Test</option>
-                  </select>
-                </div>
-                <div class="col-md-6">
-                  <label for="asmt-subject" class="form-label fw-medium">
-                    Subject <span class="text-danger">*</span>
-                  </label>
-                  <select class="form-select" id="asmt-subject" name="subject">
-                    <option value="mathematics">Mathematics</option>
-                    <option value="english">English</option>
-                    <option value="science">Science</option>
-                    <option value="social-studies">Social Studies</option>
-                    <option value="computer-science">Computer Science</option>
-                    <option value="hindi">Hindi</option>
-                  </select>
-                </div>
-              </div>
-
-              <!-- Row 3: Scores -->
-              <div class="row g-3 mb-3">
-                <div class="col-md-4">
-                  <label for="asmt-score" class="form-label fw-medium">
-                    Score <span class="text-danger">*</span>
-                  </label>
-                  <input type="number" step="0.5" class="form-control" id="asmt-score" name="score" placeholder="0" />
-                  <div class="invalid-feedback" id="asmt-score-error"></div>
-                </div>
-                <div class="col-md-4">
-                  <label for="asmt-maxScore" class="form-label fw-medium">
-                    Max Score <span class="text-danger">*</span>
-                  </label>
-                  <input type="number" class="form-control" id="asmt-maxScore" name="maxScore" placeholder="100"
-                    value="100" />
-                  <div class="invalid-feedback" id="asmt-maxScore-error"></div>
-                </div>
-                <div class="col-md-4">
-                  <label class="form-label fw-medium">Percentage</label>
-                  <div class="form-control bg-light fw-semibold" id="asmt-percentage">0%</div>
-                </div>
-              </div>
-
-              <!-- Row 4: Date -->
-              <div class="mb-3">
-                <label for="asmt-date" class="form-label fw-medium">
-                  Assessment Date <span class="text-danger">*</span>
-                </label>
-                <input type="date" class="form-control" id="asmt-date" name="date" />
-                <div class="invalid-feedback" id="asmt-date-error"></div>
-              </div>
-
-              <!-- Row 5: Feedback -->
-              <div class="mb-4">
-                <label for="asmt-feedback" class="form-label fw-medium">
-                  Feedback <span class="text-muted">(Optional)</span>
-                </label>
-                <textarea class="form-control" id="asmt-feedback" name="feedback" rows="4"
-                  placeholder="Provide detailed feedback about student performance..."></textarea>
-                <div class="d-flex justify-content-between mt-1">
-                  <small class="text-muted" id="asmt-feedback-counter">0/500 characters</small>
-                  <small class="text-danger d-none" id="asmt-feedback-error"></small>
-                </div>
-              </div>
-
-              <button type="submit" class="btn btn-primary w-100" id="assessment-submit-btn">
-                Record Assessment
-              </button>
-            </form>
-          </div>
-        </div>
 
         <!-- ===================== MONITOR TAB ===================== -->
         <div class="tab-pane fade" id="pane-monitor" role="tabpanel">

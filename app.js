@@ -140,13 +140,8 @@ function initDashboard() {
         },
         scales: {
           y: {
-            beginAtZero: true,
-            ticks: {
-              color: textColor,
-              stepSize: 1,
-              precision: 0
-            },
-            grid: { color: gridColor }
+            display: false,
+            beginAtZero: true
           },
           x: {
             ticks: { color: textColor },
@@ -216,6 +211,25 @@ function initMarksForm() {
   const dateInput = document.getElementById('marks-date');
   if (dateInput && !dateInput.value) dateInput.value = today();
 
+  // Auto-fill max marks based on assessment type
+  const marksTypeSelect = document.getElementById('marks-type');
+  if (marksTypeSelect) {
+    marksTypeSelect.addEventListener('change', (e) => {
+      const type = e.target.value;
+      const maxMarksInput = document.getElementById('marks-maxMarks');
+      if (maxMarksInput) {
+        if (type === 'mid1' || type === 'mid2' || type === 'unit 1 test' || type === 'unit3 test') {
+          maxMarksInput.value = 20;
+        } else if (type === 'assessment') {
+          maxMarksInput.value = 10;
+        } else if (type === 'final') {
+          maxMarksInput.value = 50;
+        }
+        updateMarksPercentage();
+      }
+    });
+  }
+
   // Live percentage update
   ['marks-marksObtained', 'marks-maxMarks'].forEach(id => {
     document.getElementById(id)?.addEventListener('input', updateMarksPercentage);
@@ -233,25 +247,18 @@ function updateMarksPercentage() {
 
 function handleMarksSubmit(e) {
   e.preventDefault();
-  const studentName = document.getElementById('marks-studentName').value.trim();
   const rollNo = document.getElementById('marks-rollNo').value.trim();
+  const assessmentType = document.getElementById('marks-type').value;
+  const subject = document.getElementById('marks-subject').value;
   const marksObtained = document.getElementById('marks-marksObtained').value;
   const maxMarks = document.getElementById('marks-maxMarks').value;
   const date = document.getElementById('marks-date').value;
 
   // Clear previous errors
-  ['marks-studentName', 'marks-rollNo', 'marks-marksObtained', 'marks-maxMarks', 'marks-date']
+  ['marks-rollNo', 'marks-marksObtained', 'marks-maxMarks', 'marks-date']
     .forEach(clearInvalid);
 
   let valid = true;
-
-  if (!studentName) {
-    markInvalid('marks-studentName', 'marks-studentName-error', 'Student name is required');
-    valid = false;
-  } else if (studentName.length < 2) {
-    markInvalid('marks-studentName', 'marks-studentName-error', 'Student name must be at least 2 characters');
-    valid = false;
-  }
 
   if (!rollNo) {
     markInvalid('marks-rollNo', 'marks-rollNo-error', 'Roll number is required');
@@ -287,68 +294,116 @@ function handleMarksSubmit(e) {
 
   if (!valid) return;
 
-  // Success
-  showEl('marks-success-alert');
   document.getElementById('marks-submit-btn').disabled = true;
 
-  setTimeout(() => {
-    hideEl('marks-success-alert');
-    document.getElementById('marks-form').reset();
-    document.getElementById('marks-date').value = today();
-    document.getElementById('marks-maxMarks').value = '100';
-    setText('marks-percentage', '0%');
-    document.getElementById('marks-submit-btn').disabled = false;
-  }, 2000);
+  const payload = {
+    rollNo: rollNo,
+    assessmentType: assessmentType,
+    subject: subject,
+    score: parseFloat(marksObtained),
+    maxScore: parseFloat(maxMarks)
+  };
+
+  fetch('/spp/api/assessments', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+    .then(res => res.json())
+    .then(data => {
+      if (data.status === 'success') {
+        showEl('marks-success-alert');
+
+        setTimeout(() => {
+          hideEl('marks-success-alert');
+          document.getElementById('marks-form').reset();
+          document.getElementById('marks-date').value = today();
+          document.getElementById('marks-maxMarks').value = '100';
+          setText('marks-percentage', '0%');
+          document.getElementById('marks-submit-btn').disabled = false;
+        }, 2000);
+      } else {
+        alert("Error: " + (data.error || "Failed to record marks & assessment"));
+        document.getElementById('marks-submit-btn').disabled = false;
+      }
+    })
+    .catch(err => {
+      console.error("Submission Error:", err);
+      alert("Network error. Please try again.");
+      document.getElementById('marks-submit-btn').disabled = false;
+    });
 }
 
 /* ============================================================
    ATTENDANCE FORM
    ============================================================ */
+const SEM4_SUBJECTS = {
+  cosm: 'COSM',
+  algorithms: 'Algorithms',
+  dbms: 'DBMS',
+  python: 'Python',
+  web_tech: 'Web Tech',
+  advanced_reading: 'Adv Reading',
+  aptitude: 'Aptitude',
+  project: 'Project'
+};
+
 function initAttendanceForm() {
   const dateInput = document.getElementById('attendance-date');
   if (dateInput && !dateInput.value) dateInput.value = today();
 
-  renderAttendanceTable();
+  renderAttendanceGrid();
   updateAttendanceSummary();
 
   document.getElementById('attendance-form')?.addEventListener('submit', handleAttendanceSubmit);
 }
 
-function renderAttendanceTable() {
-  const tbody = document.getElementById('attendance-tbody');
-  tbody.innerHTML = '';
+function renderAttendanceGrid() {
+  const container = document.getElementById('attendance-grid');
+  if (!container) return;
+  container.innerHTML = '';
+
   attendanceRecords.forEach(rec => {
-    const tr = document.createElement('tr');
-    tr.className = `row-${rec.status}`;
-    tr.id = `att-row-${rec.rollNo}`;
-    tr.innerHTML = `
-      <td class="fw-medium">${rec.rollNo}</td>
-      <td>${rec.studentName}</td>
-      <td>
-        <div class="btn-group btn-group-sm flex-wrap w-100" role="group">
-          <input type="radio" class="btn-check" name="att-${rec.rollNo}" id="present-${rec.rollNo}" value="present" ${rec.status === 'present' ? 'checked' : ''} onchange="updateAttendanceStatus('${rec.rollNo}', this.value)">
-          <label class="btn btn-outline-success w-50" for="present-${rec.rollNo}">Present</label>
-
-          <input type="radio" class="btn-check" name="att-${rec.rollNo}" id="absent-${rec.rollNo}" value="absent" ${rec.status === 'absent' ? 'checked' : ''} onchange="updateAttendanceStatus('${rec.rollNo}', this.value)">
-          <label class="btn btn-outline-danger w-50" for="absent-${rec.rollNo}">Absent</label>
-        </div>
-      </td>
-    `;
-    tbody.appendChild(tr);
-  });
-}
-
-function updateAttendanceStatus(rollNo, newStatus) {
-  const rec = attendanceRecords.find(r => r.rollNo === rollNo);
-  if (rec) {
-    rec.status = newStatus;
-    const tr = document.getElementById(`att-row-${rollNo}`);
-    if (tr) {
-      tr.className = `row-${newStatus}`;
+    // Reset to generic 'present' or 'absent' if it's currently an object
+    if (typeof rec.status === 'object') {
+      rec.status = 'present';
+    } else if (!rec.status) {
+      rec.status = 'present';
     }
-  }
-  updateAttendanceSummary();
-  hideEl('attendance-records-error');
+
+    // Check for Lateral Entry format (e.g. 25EG205LEK01 -> LEK01) or standard (e.g. 24EG105K01 -> K01)
+    let shortRoll = '';
+    const upperRoll = rec.rollNo.toUpperCase();
+    if (upperRoll.includes('LEK')) {
+      shortRoll = upperRoll.slice(upperRoll.indexOf('LEK')); // gets "LEK01"
+    } else if (upperRoll.includes('LE')) {
+      shortRoll = upperRoll.slice(upperRoll.indexOf('LE')); // gets "LE01"
+    } else if (upperRoll.includes('K')) {
+      shortRoll = upperRoll.slice(upperRoll.indexOf('K')); // gets "K01"
+    } else {
+      shortRoll = upperRoll.slice(-3); // fallback
+    }
+
+    const box = document.createElement('div');
+    const isPresent = rec.status === 'present';
+    box.className = `attendance-box d-flex align-items-center justify-content-center text-white fw-bold cursor-pointer rounded shadow-sm transition-colors ${isPresent ? 'bg-success' : 'bg-danger'}`;
+    box.style.width = '70px';
+    box.style.height = '60px';
+    box.style.fontSize = '1.1rem';
+    box.style.userSelect = 'none';
+    box.style.transition = 'background-color 0.2s';
+    box.textContent = shortRoll.toUpperCase();
+    box.title = rec.studentName;
+    box.id = `att-box-${rec.rollNo}`;
+
+    box.addEventListener('click', () => {
+      rec.status = rec.status === 'present' ? 'absent' : 'present';
+      box.className = `attendance-box d-flex align-items-center justify-content-center text-white fw-bold cursor-pointer rounded shadow-sm transition-colors ${rec.status === 'present' ? 'bg-success' : 'bg-danger'}`;
+      updateAttendanceSummary();
+    });
+
+    container.appendChild(box);
+  });
 }
 
 function updateAttendanceSummary() {
@@ -376,6 +431,7 @@ function handleAttendanceSubmit(e) {
 
   document.getElementById('attendance-submit-btn').disabled = true;
 
+  // Send ALL student records — absent reduces by 3%, present increases by 1%
   const payload = {
     date: date,
     records: attendanceRecords
@@ -395,11 +451,10 @@ function handleAttendanceSubmit(e) {
       if (data && data.status === 'success') {
         alert("Attendance submitted successfully!");
         showEl('attendance-success-alert');
-        setText('attendance-success-msg', `Attendance recorded successfully for ${date}!`);
 
         setTimeout(() => {
-          hideEl('attendance-success-alert');
-          document.getElementById('attendance-submit-btn').disabled = false;
+           hideEl('attendance-success-alert');
+           document.getElementById('attendance-submit-btn').disabled = false;
         }, 2000);
       } else {
         alert("Error: " + (data.error || "Failed to record attendance"));
@@ -407,143 +462,6 @@ function handleAttendanceSubmit(e) {
       }
     });
 }
-
-
-/* ============================================================
-   ASSESSMENT FORM
-   ============================================================ */
-function initAssessmentForm() {
-  const dateInput = document.getElementById('asmt-date');
-  if (dateInput && !dateInput.value) dateInput.value = today();
-
-  ['asmt-score', 'asmt-maxScore'].forEach(id => {
-    document.getElementById(id)?.addEventListener('input', updateAsmtPercentage);
-  });
-
-  document.getElementById('asmt-feedback')?.addEventListener('input', function () {
-    const len = this.value.length;
-    const count = document.getElementById('asmt-feedback-counter');
-    if (count) {
-      count.textContent = `${len}/500 characters`;
-      count.className = len > 500 ? 'text-danger' : 'text-muted';
-    }
-  });
-
-  document.getElementById('assessment-form')?.addEventListener('submit', handleAssessmentSubmit);
-}
-
-function updateAsmtPercentage() {
-  const score = parseFloat(document.getElementById('asmt-score').value) || 0;
-  const maxScore = parseFloat(document.getElementById('asmt-maxScore').value) || 0;
-  const pct = maxScore > 0 ? ((score / maxScore) * 100).toFixed(2) : '0';
-  setText('asmt-percentage', pct + '%');
-}
-
-function handleAssessmentSubmit(e) {
-  e.preventDefault();
-  const studentName = document.getElementById('asmt-studentName').value.trim();
-  const rollNo = document.getElementById('asmt-rollNo').value.trim();
-  const score = document.getElementById('asmt-score').value;
-  const maxScore = document.getElementById('asmt-maxScore').value;
-  const date = document.getElementById('asmt-date').value;
-  const feedback = document.getElementById('asmt-feedback').value;
-
-  ['asmt-studentName', 'asmt-rollNo', 'asmt-score', 'asmt-maxScore', 'asmt-date'].forEach(clearInvalid);
-  hideEl('asmt-feedback-error');
-
-  let valid = true;
-
-  if (!studentName) {
-    markInvalid('asmt-studentName', 'asmt-studentName-error', 'Student name is required');
-    valid = false;
-  } else if (studentName.length < 2) {
-    markInvalid('asmt-studentName', 'asmt-studentName-error', 'Student name must be at least 2 characters');
-    valid = false;
-  }
-
-  if (!rollNo) {
-    markInvalid('asmt-rollNo', 'asmt-rollNo-error', 'Roll number is required');
-    valid = false;
-  } else if (!/^\d+$/.test(rollNo)) {
-    markInvalid('asmt-rollNo', 'asmt-rollNo-error', 'Roll number must contain only digits');
-    valid = false;
-  }
-
-  if (!score) {
-    markInvalid('asmt-score', 'asmt-score-error', 'Score is required');
-    valid = false;
-  } else if (parseFloat(score) < 0) {
-    markInvalid('asmt-score', 'asmt-score-error', 'Score cannot be negative');
-    valid = false;
-  } else if (parseFloat(score) > parseFloat(maxScore)) {
-    markInvalid('asmt-score', 'asmt-score-error', `Score cannot exceed ${maxScore}`);
-    valid = false;
-  }
-
-  if (!maxScore) {
-    markInvalid('asmt-maxScore', 'asmt-maxScore-error', 'Max score is required');
-    valid = false;
-  } else if (parseFloat(maxScore) <= 0) {
-    markInvalid('asmt-maxScore', 'asmt-maxScore-error', 'Max score must be greater than 0');
-    valid = false;
-  }
-
-  if (!date) {
-    markInvalid('asmt-date', 'asmt-date-error', 'Date is required');
-    valid = false;
-  }
-
-  if (feedback.length > 500) {
-    const errEl = document.getElementById('asmt-feedback-error');
-    if (errEl) { errEl.textContent = 'Feedback must be 500 characters or less'; errEl.classList.remove('d-none'); }
-    valid = false;
-  }
-
-  if (!valid) return;
-
-  document.getElementById('assessment-submit-btn').disabled = true;
-
-  const payload = {
-    rollNo: rollNo,
-    assessmentType: document.getElementById('asmt-type').value,
-    subject: document.getElementById('asmt-subject').value,
-    score: parseFloat(score),
-    maxScore: parseFloat(maxScore)
-  };
-
-  fetch('/spp/api/assessments', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  })
-    .then(res => res.json())
-    .then(data => {
-      if (data.status === 'success') {
-        showEl('assessment-success-alert');
-
-        // Also potentially refresh student data here if needed, or wait for next page load
-
-        setTimeout(() => {
-          hideEl('assessment-success-alert');
-          document.getElementById('assessment-form').reset();
-          document.getElementById('asmt-date').value = today();
-          document.getElementById('asmt-maxScore').value = '100';
-          setText('asmt-percentage', '0%');
-          setText('asmt-feedback-counter', '0/500 characters');
-          document.getElementById('assessment-submit-btn').disabled = false;
-        }, 2000);
-      } else {
-        alert("Error: " + (data.error || "Failed to record assessment"));
-        document.getElementById('assessment-submit-btn').disabled = false;
-      }
-    })
-    .catch(err => {
-      console.error("Assessment Error:", err);
-      alert("Network error. Please try again.");
-      document.getElementById('assessment-submit-btn').disabled = false;
-    });
-}
-
 /* ============================================================
    MONITOR TAB
    ============================================================ */
@@ -694,17 +612,60 @@ function showMonitorDetails(id) {
   }
   setHTML('mon-details-risks', riskHtml);
 
-  // Recent Assessments
-  const assessmentsHtml = student.recentAssessments.map(a => `
-    <div class="assessment-item">
-      <div>
-        <p class="fw-medium small mb-0">${a.type}</p>
-        <p class="text-muted" style="font-size:0.75rem;margin-bottom:0">${a.subject} &bull; ${a.date}</p>
-      </div>
-      <div class="fs-5 fw-bold ${performanceColor(a.score)}">${a.score}%</div>
+  // Monitor Details Table (Subjects as rows, Assessment Types as columns)
+  const assessmentTypes = ['mid1', 'mid2', 'unit 1 test', 'unit3 test', 'assessment', 'final'];
+  
+  // Create a map to quickly look up raw scores
+  const scoreMap = {}; 
+  student.recentAssessments.forEach(a => {
+    if (!scoreMap[a.subject]) scoreMap[a.subject] = {};
+    // Extracting the exact score out of the assessment object
+    scoreMap[a.subject][a.type] = a.score;
+  });
+
+  let tableHtml = `
+    <div class="table-responsive">
+      <table class="table table-bordered table-sm align-middle text-center mt-3">
+        <thead class="table-light">
+          <tr>
+            <th class="text-start">Subject</th>
+            ${assessmentTypes.map(t => `<th class="text-capitalize">${t.replace(/-/g, ' ')}</th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>
+  `;
+
+  // Always display the 8 specific Sem 4 subjects, mapping the dynamic DB scores to them.
+  const monitorSubjects = [
+    { key: 'cosm', label: 'Computer Oriented Statistical Methods' },
+    { key: 'algorithms', label: 'Fundamentals of Computer Algorithms' },
+    { key: 'dbms', label: 'Database Management Systems' },
+    { key: 'python', label: 'Programming in Python' },
+    { key: 'web-tech', label: 'Web Technologies' },
+    { key: 'advanced-reading', label: 'Advanced Reading Comprehension Skills' },
+    { key: 'aptitude', label: 'Quantitative Aptitude and Logical Reasoning - II' },
+    { key: 'project', label: 'Integrated Project - II' }
+  ];
+
+  monitorSubjects.forEach(sub => {
+    tableHtml += `<tr><td class="text-start fw-medium">${sub.label}</td>`;
+    assessmentTypes.forEach(type => {
+      // Look up score by the subject key (e.g. 'cosm') or label (e.g. 'COSM')
+      const targetScores = scoreMap[sub.key] || scoreMap[sub.label] || {};
+      const score = targetScores[type];
+      const displayScore = score !== undefined ? score : '-';
+      tableHtml += `<td>${displayScore}</td>`;
+    });
+    tableHtml += `</tr>`;
+  });
+
+  tableHtml += `
+        </tbody>
+      </table>
     </div>
-  `).join('');
-  setHTML('mon-details-assessments', assessmentsHtml);
+  `;
+  
+  setHTML('mon-details-assessments', tableHtml);
 
   // Scroll to details
   document.getElementById('monitor-details-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -831,7 +792,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   initDashboard();
   initMarksForm();
   initAttendanceForm();
-  initAssessmentForm();
   initMonitor();
   initMessageForm();
 });

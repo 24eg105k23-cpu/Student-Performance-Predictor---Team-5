@@ -22,7 +22,6 @@ echo Syncing frontend files...
 copy /Y "%cd%\index.html" "%cd%\webapp\index.html"
 copy /Y "%cd%\app.js" "%cd%\webapp\app.js"
 copy /Y "%cd%\styles.css" "%cd%\webapp\styles.css"
-copy /Y "%cd%\test.js" "%cd%\webapp\test.js"
 
 echo.
 echo Deploying to Tomcat...

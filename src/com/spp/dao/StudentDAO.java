@@ -19,15 +19,22 @@ public class StudentDAO {
      */
     public List<Student> getAllStudents() {
         List<Student> students = new ArrayList<>();
-        // Query computes performance score and attendance rate manually per student.
+        // Attendance = 100 - (absent_count * 3) + (present_count * 1), capped [0, 100]
+        // Performance = (total_score / total_max_score) * 100
         String sql = "SELECT s.ROLL_NO, s.STUDENT_NAME, " +
-                "       COALESCE(ROUND((SUM(CASE WHEN a.STATUS = 'present' THEN 1 ELSE 0 END) / NULLIF(COUNT(a.ID), 0)) * 100), 100) AS ATTENDANCE_RATE, "
-                +
-                "       COALESCE(ROUND((SUM(m.SCORE) / NULLIF(SUM(m.MAX_SCORE), 0)) * 100), 0) AS PERFORMANCE_SCORE " +
+                "       GREATEST(LEAST(100 - (COALESCE(att.ABSENT_COUNT, 0) * 3) + (COALESCE(att.PRESENT_COUNT, 0) * 1), 100), 0) AS ATTENDANCE_RATE, " +
+                "       COALESCE(perf.PERF_SCORE, 0) AS PERFORMANCE_SCORE " +
                 "FROM STUDENTS s " +
-                "LEFT JOIN ATTENDANCE a ON s.ROLL_NO = a.ROLL_NO " +
-                "LEFT JOIN ASSESSMENTS m ON s.ROLL_NO = m.ROLL_NO " +
-                "GROUP BY s.ROLL_NO, s.STUDENT_NAME " +
+                "LEFT JOIN (" +
+                "    SELECT ROLL_NO, " +
+                "           SUM(CASE WHEN STATUS = 'absent' THEN 1 ELSE 0 END) AS ABSENT_COUNT, " +
+                "           SUM(CASE WHEN STATUS = 'present' THEN 1 ELSE 0 END) AS PRESENT_COUNT " +
+                "    FROM ATTENDANCE GROUP BY ROLL_NO" +
+                ") att ON s.ROLL_NO = att.ROLL_NO " +
+                "LEFT JOIN (" +
+                "    SELECT ROLL_NO, ROUND((SUM(SCORE) / NULLIF(SUM(MAX_SCORE), 0)) * 100) AS PERF_SCORE " +
+                "    FROM ASSESSMENTS GROUP BY ROLL_NO" +
+                ") perf ON s.ROLL_NO = perf.ROLL_NO " +
                 "ORDER BY s.ROLL_NO ASC";
 
         try (Connection conn = DBUtil.getConnection();
