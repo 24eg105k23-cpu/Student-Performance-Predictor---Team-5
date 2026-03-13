@@ -190,6 +190,8 @@ h6,
   backdrop-filter: blur(12px);
   border: 1px solid var(--card-border);
   display: inline-flex;
+  margin-left: auto;
+  margin-right: auto;
   margin-bottom: 2rem !important;
   animation: fadeIn 1s ease-out 0.2s both;
 }
